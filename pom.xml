@@ -42,17 +42,11 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<version>1.18.36</version>
-			<optional>true</optional>
-		</dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.33</version>
+        </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -87,7 +81,19 @@
 			<version>1.11.0</version>
 		</dependency>
 
-		<!-- 代码生成模块 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+            <version>1.1.0-beta7</version>
+        </dependency>
+
+
+        <!-- 代码生成模块 -->
 		<dependency>
 			<groupId>com.mybatis-flex</groupId>
 			<artifactId>mybatis-flex-codegen</artifactId>
@@ -111,7 +117,7 @@
 		</dependency>
 
 
-	</dependencies>
+    </dependencies>
 
 	<build>
 		<plugins>
