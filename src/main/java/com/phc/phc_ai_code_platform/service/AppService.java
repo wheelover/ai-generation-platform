@@ -4,8 +4,11 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.phc.phc_ai_code_platform.model.dto.app.AppQueryRequest;
 import com.phc.phc_ai_code_platform.model.entity.App;
+import com.phc.phc_ai_code_platform.model.entity.User;
 import com.phc.phc_ai_code_platform.model.vo.AppVO;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.GetMapping;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -66,4 +69,8 @@ public interface AppService extends IService<App> {
      * @return 查询条件
      */
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);
+
+
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
+
 }
