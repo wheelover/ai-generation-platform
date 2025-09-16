@@ -70,7 +70,22 @@ public interface AppService extends IService<App> {
      */
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);
 
-
+    /**
+     * 聊天生成代码
+     *
+     * @param appId 应用ID
+     * @param message 消息
+     * @param loginUser 登录用户
+     * @return 生成的代码
+     */
     Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
+    /**
+     * 部署应用
+     *
+     * @param appId 应用ID
+     * @param loginUser 登录用户
+     * @return 部署结果
+     */
+    String deployApp(Long appId, User loginUser);
 }
