@@ -21,6 +21,7 @@ import com.phc.phc_ai_code_platform.model.enums.UserRoleEnum;
 import com.phc.phc_ai_code_platform.model.vo.AppVO;
 import com.phc.phc_ai_code_platform.model.vo.UserVO;
 import com.phc.phc_ai_code_platform.service.AppService;
+import com.phc.phc_ai_code_platform.service.ChatHistoryService;
 import com.phc.phc_ai_code_platform.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +49,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+
+    @Resource
+    private ChatHistoryService chatHistoryService;
 
     @Override
     public long addApp(App app, HttpServletRequest request) {
@@ -109,6 +113,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         if (!oldApp.getUserId().equals(loginUser.getId()) && !UserRoleEnum.ADMIN.getValue().equals(loginUser.getUserRole())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+        
+        // 删除应用的聊天历史
+        chatHistoryService.deleteByAppId(id);
+        
         return this.removeById(id);
     }
 
