@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- 菠萝顶部叶子 -->
+  <path d="M100 10 L120 40 L100 35 L80 40 Z" fill="#4CAF50"/>
+  <path d="M100 20 L130 50 L100 45 L70 50 Z" fill="#388E3C"/>
+  
+  <!-- 菠萝主体 -->
+  <ellipse cx="100" cy="120" rx="60" ry="70" fill="#FFC107"/>
+  
+  <!-- 菠萝表面的菱形纹理 -->
+  <g fill="#FFD54F">
+    <circle cx="80" cy="80" r="5"/>
+    <circle cx="100" cy="80" r="5"/>
+    <circle cx="120" cy="80" r="5"/>
+    
+    <circle cx="70" cy="100" r="5"/>
+    <circle cx="90" cy="100" r="5"/>
+    <circle cx="110" cy="100" r="5"/>
+    <circle cx="130" cy="100" r="5"/>
+    
+    <circle cx="80" cy="120" r="5"/>
+    <circle cx="100" cy="120" r="5"/>
+    <circle cx="120" cy="120" r="5"/>
+    
+    <circle cx="70" cy="140" r="5"/>
+    <circle cx="90" cy="140" r="5"/>
+    <circle cx="110" cy="140" r="5"/>
+    <circle cx="130" cy="140" r="5"/>
+    
+    <circle cx="80" cy="160" r="5"/>
+    <circle cx="100" cy="160" r="5"/>
+    <circle cx="120" cy="160" r="5"/>
+  </g>
+  
+  <!-- AI 文字 -->
+  <text x="85" y="120" font-family="Arial" font-size="24" font-weight="bold" fill="#212121">AI</text>
+</svg>
