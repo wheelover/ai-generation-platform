@@ -30,8 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.phc.phc_ai_code_platform.model.entity.ChatHistory.CHAT_HISTORY;
-
 /**
  *  服务层实现。
  *
@@ -101,9 +99,9 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
         // 按创建时间降序查询最新的消息
         QueryWrapper queryWrapper = QueryWrapper.create()
-                .where(CHAT_HISTORY.APP_ID.eq(appId))
-                .and(CHAT_HISTORY.IS_DELETE.eq(0))
-                .orderBy(CHAT_HISTORY.CREATE_TIME.desc())
+                .where("chat_history.appId = ?", appId)
+                .and("chat_history.isDelete = ?", 0)
+                .orderBy("chat_history.createTime DESC")
                 .limit(limit);
 
         List<ChatHistory> chatHistoryList = this.list(queryWrapper);
@@ -124,15 +122,15 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         }
 
         QueryWrapper queryWrapper = QueryWrapper.create()
-                .where(CHAT_HISTORY.APP_ID.eq(appId))
-                .and(CHAT_HISTORY.IS_DELETE.eq(0));
+                .where("chat_history.appId = ?", appId)
+                .and("chat_history.isDelete = ?", 0);
         
         // 如果有游标，则查询比游标ID小的消息（即更早的消息）
         if (cursor != null && cursor > 0) {
-            queryWrapper.and(CHAT_HISTORY.ID.lt(cursor));
+            queryWrapper.and("chat_history.id < ?", cursor);
         }
         
-        queryWrapper.orderBy(CHAT_HISTORY.CREATE_TIME.desc())
+        queryWrapper.orderBy("chat_history.createTime DESC")
                 .limit(pageSize);
 
         List<ChatHistory> chatHistoryList = this.list(queryWrapper);
@@ -148,7 +146,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID不能为空");
         
         QueryWrapper queryWrapper = QueryWrapper.create()
-                .where(CHAT_HISTORY.APP_ID.eq(appId));
+                .where("chat_history.appId = ?", appId);
         
         return this.remove(queryWrapper);
     }
@@ -211,18 +209,26 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         long pageSize = chatHistoryQueryRequest.getPageSize();
         long pageNum = chatHistoryQueryRequest.getPageNum();
         
-        QueryWrapper queryWrapper = QueryWrapper.create()
-                .where(CHAT_HISTORY.APP_ID.eq(appId))
-                .and(CHAT_HISTORY.MESSAGE_TYPE.eq(messageType))
-                .and(CHAT_HISTORY.USER_ID.eq(userId))
-                .and(CHAT_HISTORY.IS_DELETE.eq(0));
+        QueryWrapper queryWrapper = QueryWrapper.create();
+        queryWrapper.where("chat_history.isDelete = ?", 0);
+        if (appId != null) {
+            queryWrapper.and("chat_history.appId = ?", appId);
+        }
+        if (messageType != null) {
+            queryWrapper.and("chat_history.messageType = ?", messageType);
+        }
+        if (userId != null) {
+            queryWrapper.and("chat_history.userId = ?", userId);
+        }
         
         // 默认按创建时间降序排序
         if (sortField == null) {
-            sortField = "createTime";
+            sortField = "chat_history.createTime";
+        } else {
+            sortField = "chat_history." + sortField;
         }
         
-        queryWrapper.orderBy(sortField, "ascend".equals(sortOrder));
+        queryWrapper.orderBy(sortField + " " + ("ascend".equals(sortOrder) ? "ASC" : "DESC"));
         
         Page<ChatHistory> chatHistoryPage = this.page(Page.of(pageNum, pageSize), queryWrapper);
         

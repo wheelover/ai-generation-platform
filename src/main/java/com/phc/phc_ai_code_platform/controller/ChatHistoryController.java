@@ -58,7 +58,7 @@ public class ChatHistoryController {
         ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR, "无权访问该应用的聊天历史");
         
         // 获取最新聊天历史
-        List<ChatHistoryVO极速> chatHistoryVOList = chatHistoryService.getLatestChatHistory(appId, limit);
+        List<ChatHistoryVO> chatHistoryVOList = chatHistoryService.getLatestChatHistory(appId, limit);
         return ResultUtils.success(chatHistoryVOList);
     }
 
@@ -68,7 +68,7 @@ public class ChatHistoryController {
      * @param appId 应用ID
      * @param cursor 游标（上一页最早消息的ID）
      * @param pageSize 每页大小
-     * @极速param request HTTP请求
+     * @param request HTTP请求
      * @return 聊天历史列表
      */
     @GetMapping("/more")
@@ -85,7 +85,7 @@ public class ChatHistoryController {
         boolean hasPermission = chatHistoryService.hasAccessPermission(appId, loginUser);
         ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR, "无权访问该应用的聊天历史");
         
-        // 获取更多聊天历史
+        // 根据游标获取更多聊天历史
         List<ChatHistoryVO> chatHistoryVOList = chatHistoryService.getChatHistoryByCursor(appId, cursor, pageSize);
         return ResultUtils.success(chatHistoryVOList);
     }
@@ -100,7 +100,7 @@ public class ChatHistoryController {
     @PostMapping("/delete/app")
     public BaseResponse<Boolean> deleteAppChatHistory(@RequestBody DeleteRequest deleteRequest, 
                                                      HttpServletRequest request) {
-        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() <= 极速0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(deleteRequest == null || deleteRequest.getId() <= 0, ErrorCode.PARAMS_ERROR);
         
         Long appId = deleteRequest.getId();
         
