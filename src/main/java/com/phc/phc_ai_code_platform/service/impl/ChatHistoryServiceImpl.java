@@ -21,6 +21,7 @@ import com.phc.phc_ai_code_platform.service.AppService;
 import com.phc.phc_ai_code_platform.service.ChatHistoryService;
 import com.phc.phc_ai_code_platform.service.UserService;
 import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -42,6 +43,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     private UserService userService;
 
     @Resource
+    @Lazy
     private AppService appService;
 
     @Override
