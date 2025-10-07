@@ -1,12 +1,15 @@
 package com.phc.phc_ai_code_platform.service;
 
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.phc.phc_ai_code_platform.model.dto.chathistory.ChatHistoryQueryRequest;
 import com.phc.phc_ai_code_platform.model.entity.ChatHistory;
 import com.phc.phc_ai_code_platform.model.entity.User;
 import com.phc.phc_ai_code_platform.model.vo.ChatHistoryVO;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -105,4 +108,20 @@ public interface ChatHistoryService extends IService<ChatHistory> {
      * @return 是否有权限
      */
     boolean hasAccessPermission(Long appId, User loginUser);
+
+    boolean addChatMessage(Long appId, String message, String messageType, Long userId);
+
+    /**
+     * 获取查询包装类
+     *
+     * @param chatHistoryQueryRequest
+     * @return
+     */
+    QueryWrapper getQueryWrapper(ChatHistoryQueryRequest chatHistoryQueryRequest);
+
+    Page<ChatHistory> listAppChatHistoryByPage(Long appId, int pageSize,
+                                               LocalDateTime lastCreateTime,
+                                               User loginUser);
+
+    int loadChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount);
 }

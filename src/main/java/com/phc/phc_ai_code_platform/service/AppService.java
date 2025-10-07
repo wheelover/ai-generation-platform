@@ -10,12 +10,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import reactor.core.publisher.Flux;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  *  服务层。
  *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
+ *
  */
 public interface AppService extends IService<App> {
 
@@ -45,6 +46,8 @@ public interface AppService extends IService<App> {
      * @return 是否成功
      */
     boolean deleteApp(long id, HttpServletRequest request);
+
+    boolean removeById(Serializable id);
 
     /**
      * 获取应用VO

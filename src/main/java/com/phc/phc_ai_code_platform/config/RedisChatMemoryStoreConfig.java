@@ -1,5 +1,6 @@
 package com.phc.phc_ai_code_platform.config;
 
+
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
