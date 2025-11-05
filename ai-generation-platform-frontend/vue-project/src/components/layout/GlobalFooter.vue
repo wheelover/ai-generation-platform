@@ -5,7 +5,7 @@
 <template>
   <a-layout-footer class="global-footer">
     <div class="footer-content">
-      编程导航原创项目 by <a href="https://www.codefather.cn" target="_blank">程序员鱼皮</a>
+      菠萝 AI 零酷空间项目 by <a href="https://www.codefather.cn" target="_blank">Handsome Polor</a>
     </div>
   </a-layout-footer>
 </template>

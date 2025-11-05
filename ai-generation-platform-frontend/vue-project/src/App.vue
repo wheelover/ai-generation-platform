@@ -6,6 +6,7 @@ import BasicLayout from './layouts/BasicLayout.vue'
 <template>
   <BasicLayout>
     <RouterView />
+    <a-button type="primary">Primary Button</a-button>
   </BasicLayout>
 </template>
 
