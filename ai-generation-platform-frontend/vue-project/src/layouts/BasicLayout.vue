@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { Layout } from 'ant-design-vue'
-import GlobalHeader from '@/components/layout/GlobalHeader.vue'
-import GlobalFooter from '@/components/layout/GlobalFooter.vue'
+import GlobalHeader from '@/components/GlobalHeader.vue'
+import GlobalFooter from '@/components/GlobalFooter.vue'
 </script>
 
 <template>
