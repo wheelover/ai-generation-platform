@@ -11,7 +11,7 @@ spring:
   profiles:
     active: local
   application:
-    name: yu-ai-code-mother-backend
+    name: ai-generation-platform
   session:
     store-type: redis
     # session 30 天过期
