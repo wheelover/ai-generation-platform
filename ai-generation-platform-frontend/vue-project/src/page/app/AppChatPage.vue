@@ -1,0 +1,1077 @@
+<template>
+  <div id="appChatPage">
+    <!-- 顶部栏 -->
+    <div class="app-header">
+      <div class="app-header-left">
+        <a-dropdown>
+          <a-button>{{ appInfo.appName || '应用名称' }}</a-button>
+          <template #overlay>
+            <a-menu>
+              <a-menu-item @click="goToUpdate">编辑应用信息</a-menu-item>
+              <a-menu-item @click="deleteCurrentApp">删除应用</a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+      </div>
+      <div class="app-header-right">
+        <a-dropdown placement="bottomRight" trigger="click">
+          <a-button>应用详情</a-button>
+          <template #overlay>
+            <a-card class="app-detail-card" style="width: 300px;">
+              <div class="app-detail-section">
+                <h4>应用基础信息</h4>
+                <div class="app-creator">
+                  <a-avatar :size="40" :src="appInfo.user?.userAvatar || ''">{{ appInfo.user?.userName?.charAt(0) || '?' }}</a-avatar>
+                  <span class="creator-name">{{ appInfo.user?.userName || '未知用户' }}</span>
+                </div>
+                <div class="app-info-item">
+                  <span class="info-label">创建时间：</span>
+                  <span class="info-value">{{ appInfo.createTime ? formatDate(appInfo.createTime) : '未知时间' }}</span>
+                </div>
+              </div>
+              <div v-if="isOwner" class="app-detail-section">
+                <h4>操作</h4>
+                <div class="app-actions">
+                  <a-button type="link" @click="goToUpdate">修改</a-button>
+                  <a-button type="link" @click="deleteCurrentApp">删除</a-button>
+                </div>
+              </div>
+            </a-card>
+          </template>
+        </a-dropdown>
+        <a-button type="primary" @click="deployApp" :loading="deploying">部署</a-button>
+      </div>
+    </div>
+    
+    <!-- 核心内容区域 -->
+    <div class="app-content">
+      <!-- 左侧对话区域 -->
+      <div class="chat-section">
+        <!-- 消息区域 -->
+        <div class="message-area" ref="messageArea">
+          <div v-for="(message, index) in messages" :key="index" class="message-item" :class="message.role">
+            <div class="message-content">
+              <div class="message-header">
+                <span class="message-author">{{ message.role === 'user' ? '我' : 'AI' }}</span>
+                <span class="message-time">{{ message.timestamp }}</span>
+              </div>
+              <div class="message-body">
+                <pre v-if="message.role === 'ai'" class="ai-message">{{ message.content }}</pre>
+                <p v-else class="user-message">{{ message.content }}</p>
+              </div>
+            </div>
+          </div>
+          <div v-if="loading" class="loading-message">
+            <a-spin tip="AI 正在生成..." />
+          </div>
+        </div>
+        
+        <!-- 用户消息输入框 -->
+        <div class="input-area">
+          <a-form layout="vertical" :model="inputForm" @finish="sendMessage">
+            <a-form-item>
+              <a-input
+                v-model:value="inputForm.content"
+                placeholder="输入消息..."
+                :auto-size="{ minRows: 2, maxRows: 6 }"
+                class="message-input"
+                :disabled="!isOwner"
+                :tooltip="{ title: !isOwner ? '无法在别人的作品下对话哦~' : '' }"
+              />
+            </a-form-item>
+            <div class="input-actions">
+              <a-button :disabled="!isOwner">
+                <template #icon>
+                  <span class="icon">📤</span>
+                </template>
+              </a-button>
+              <a-button :disabled="!isOwner">优化</a-button>
+              <a-button type="primary" html-type="submit" :disabled="!isOwner">
+                <template #icon>
+                  <span class="icon">🚀</span>
+                </template>
+              </a-button>
+            </div>
+          </a-form>
+        </div>
+      </div>
+      
+      <!-- 右侧网页展示区域 -->
+      <div class="web-preview-section">
+        <h3 class="preview-title">生成后的网页展示</h3>
+        <div v-if="!webPreviewUrl" class="preview-placeholder">
+          <a-empty description="网站生成完成后将在此展示" />
+        </div>
+        <iframe
+          v-else
+          :src="webPreviewUrl"
+          frameborder="0"
+          class="web-preview-iframe"
+          title="网页预览"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 部署成功卡片 -->
+  <a-modal
+    v-model:open="deploySuccess"
+    title="部署成功"
+    :footer="null"
+    :width="400"
+    :closable="true"
+    @cancel="closeDeployCard"
+  >
+    <div class="deploy-success-content">
+      <div class="success-icon">✓</div>
+      <h3>网站部署成功！</h3>
+      <p>你的网站已经成功部署，可以通过以下链接访问：</p>
+      <div class="deploy-url-container">
+        <a-input v-model:value="deployUrl" readonly />
+        <a-button type="text" @click="copyDeployUrl" icon="copy">复制</a-button>
+      </div>
+      <div class="deploy-actions">
+        <a-button type="primary" @click="visitWebsite">访问网站</a-button>
+        <a-button @click="closeDeployCard">关闭</a-button>
+      </div>
+    </div>
+  </a-modal>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { message } from 'ant-design-vue'
+import { getAppVoById, chatToGenCode, deployApp as deployAppApi, deleteApp } from '@/api/appController'
+import { useLoginUserStore } from '@/stores/loginUser'
+
+const router = useRouter()
+const route = useRoute()
+const appId = Number(route.params.id)
+const isViewMode = route.query.view === '1'
+
+// 登录用户 store
+const loginUserStore = useLoginUserStore()
+// 是否为应用所有者
+const isOwner = ref(false)
+
+// 应用信息
+const appInfo = ref<API.AppVO>({})
+// 消息列表
+const messages = ref<Array<{ role: 'user' | 'ai'; content: string; timestamp: string }>>([])
+// 输入表单
+const inputForm = reactive({ content: '' })
+// 加载状态
+const loading = ref(false)
+// 部署状态
+const deploying = ref(false)
+// 网页预览URL
+const webPreviewUrl = ref('')
+// 部署成功卡片
+const deploySuccess = ref(false)
+// 部署URL
+const deployUrl = ref('')
+// 消息区域引用
+const messageArea = ref<HTMLElement>()
+
+// 获取应用信息
+const fetchAppInfo = async () => {
+  try {
+    // 获取应用信息
+    const res = await getAppVoById({ id: appId })
+    if (res.data && res.data.code === 0 && res.data.data) {
+      appInfo.value = res.data.data
+      
+      // 获取当前用户信息
+      await loginUserStore.fetchLoginUser()
+      
+      // 判断是否为应用所有者
+      isOwner.value = loginUserStore.loginUser.id === appInfo.value.userId
+      
+      // 初始化消息列表，将应用的初始提示词作为用户消息
+      if (appInfo.value.initPrompt) {
+        messages.value = [
+          {
+            role: 'user',
+            content: appInfo.value.initPrompt,
+            timestamp: new Date().toLocaleString()
+          }
+        ]
+        // 非查看模式下自动发送初始提示词给AI
+        if (!isViewMode) {
+          sendInitialPrompt()
+        }
+      }
+    }
+  } catch {
+    message.error('获取应用信息失败')
+  }
+}
+
+// 发送初始提示词
+const sendInitialPrompt = async () => {
+  if (!appInfo.value.initPrompt) return
+  
+  loading.value = true
+  try {
+    const aiMessageIndex = messages.value.length
+    messages.value.push({
+      role: 'ai',
+      content: '',
+      timestamp: new Date().toLocaleString()
+    })
+    
+    const url = `http://localhost:8123/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(appInfo.value.initPrompt)}`
+    const response = await fetch(url, {
+      credentials: 'include'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Network response was not ok')
+    }
+    
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw new Error('No response body')
+    }
+    
+    const decoder = new TextDecoder()
+    let completeContent = ''
+    
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n')
+      
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const data = line.substring(5).trim()
+          if (data) {
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.d) {
+                completeContent += parsed.d
+                messages.value[aiMessageIndex].content = completeContent
+                scrollToBottom()
+              }
+            } catch (e) {
+              console.error('解析SSE数据失败:', e)
+            }
+          }
+        } else if (line.startsWith('event: done')) {
+          // 处理完成事件
+          break
+        }
+      }
+    }
+    
+    // 尝试解析JSON格式
+    let displayContent = completeContent
+    try {
+      // 提取JSON部分（如果有）
+      const jsonMatch = completeContent.match(/```json\s*([\s\S]*?)\s*```/)
+      if (jsonMatch && jsonMatch[1]) {
+        const jsonString = jsonMatch[1]
+        const parsedData = JSON.parse(jsonString)
+        if (parsedData.htmlCode) {
+          displayContent = parsedData.htmlCode
+        }
+      }
+    } catch (jsonError) {
+      // JSON解析失败，显示原始内容
+      console.error('JSON解析失败:', jsonError)
+    }
+    
+    messages.value[aiMessageIndex].content = displayContent
+    // 生成完成后，设置网页预览URL
+    webPreviewUrl.value = `http://localhost:8123/api/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+  } catch (error) {
+    console.error('AI生成失败:', error)
+    message.error('AI生成失败')
+  } finally {
+    loading.value = false
+    // 滚动到底部
+    scrollToBottom()
+  }
+}
+
+// 发送消息
+const sendMessage = async () => {
+  const content = inputForm.content.trim()
+  if (!content) return
+  
+  // 添加用户消息
+  messages.value.push({
+    role: 'user',
+    content: content,
+    timestamp: new Date().toLocaleString()
+  })
+  
+  // 清空输入框
+  inputForm.content = ''
+  
+  // 滚动到底部
+  scrollToBottom()
+  
+  loading.value = true
+  try {
+    const aiMessageIndex = messages.value.length
+    messages.value.push({
+      role: 'ai',
+      content: '',
+      timestamp: new Date().toLocaleString()
+    })
+    
+    const url = `http://localhost:8123/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(content)}`
+    const response = await fetch(url, {
+      credentials: 'include'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Network response was not ok')
+    }
+    
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw new Error('No response body')
+    }
+    
+    const decoder = new TextDecoder()
+    let completeContent = ''
+    
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n')
+      
+      for (const line of lines) {
+        if (line.startsWith('data:')) {
+          const data = line.substring(5).trim()
+          if (data) {
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.d) {
+                completeContent += parsed.d
+                messages.value[aiMessageIndex].content = completeContent
+                scrollToBottom()
+              }
+            } catch (e) {
+              console.error('解析SSE数据失败:', e)
+            }
+          }
+        } else if (line.startsWith('event: done')) {
+          // 处理完成事件
+          break
+        }
+      }
+    }
+    
+    // 尝试解析JSON格式
+    let displayContent = completeContent
+    try {
+      // 提取JSON部分（如果有）
+      const jsonMatch = completeContent.match(/```json\s*([\s\S]*?)\s*```/)
+      if (jsonMatch && jsonMatch[1]) {
+        const jsonString = jsonMatch[1]
+        const parsedData = JSON.parse(jsonString)
+        if (parsedData.htmlCode) {
+          displayContent = parsedData.htmlCode
+        }
+      }
+    } catch (jsonError) {
+      // JSON解析失败，显示原始内容
+      console.error('JSON解析失败:', jsonError)
+    }
+    
+    messages.value[aiMessageIndex].content = displayContent
+    // 生成完成后，更新网页预览URL
+    webPreviewUrl.value = `http://localhost:8123/api/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+  } catch (error) {
+    console.error('AI生成失败:', error)
+    message.error('AI生成失败')
+  } finally {
+    loading.value = false
+    // 滚动到底部
+    scrollToBottom()
+  }
+}
+
+// 部署应用
+const deployApp = async () => {
+  deploying.value = true
+  try {
+    const res = await deployAppApi({
+      appId: appId
+    })
+    if (res.data && res.data.code === 0 && res.data.data) {
+      message.success('部署成功')
+      // 显示部署成功卡片
+      deployUrl.value = res.data.data
+      deploySuccess.value = true
+    } else {
+      message.error('部署失败')
+    }
+  } catch {
+    message.error('部署失败')
+  } finally {
+    deploying.value = false
+  }
+}
+
+// 跳转到应用信息修改页
+const goToUpdate = () => {
+  router.push(`/app/update/${appId}`)
+}
+
+// 删除当前应用
+const deleteCurrentApp = async () => {
+  try {
+    const res = await deleteApp({ id: appId })
+    if (res.data && res.data.code === 0) {
+      message.success('应用删除成功')
+      router.push('/')
+    } else {
+      message.error('应用删除失败')
+    }
+  } catch {
+    message.error('应用删除失败')
+  }
+}
+
+// 滚动到底部
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messageArea.value) {
+      messageArea.value.scrollTop = messageArea.value.scrollHeight
+    }
+  })
+}
+
+// 格式化日期
+const formatDate = (date: string | Date): string => {
+  return new Date(date).toLocaleString()
+}
+
+// 关闭部署成功卡片
+const closeDeployCard = () => {
+  deploySuccess.value = false
+}
+
+// 访问网站
+const visitWebsite = () => {
+  if (deployUrl.value) {
+    window.open(deployUrl.value, '_blank')
+  }
+}
+
+// 复制部署URL
+const copyDeployUrl = () => {
+  if (deployUrl.value) {
+    navigator.clipboard.writeText(deployUrl.value)
+      .then(() => {
+        message.success('复制成功')
+      })
+      .catch(() => {
+        message.error('复制失败')
+      })
+  }
+}
+
+// 监听消息变化，自动滚动到底部
+watch(messages, () => {
+  scrollToBottom()
+}, { deep: true })
+
+// 页面加载时获取应用信息
+onMounted(() => {
+  fetchAppInfo()
+})
+</script>
+
+<style scoped>
+#appChatPage {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.app-header-left .ant-dropdown-trigger {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.app-header-left .ant-dropdown-trigger:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-header-right .ant-btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.app-header-right .ant-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-section {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e9ecef;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.message-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.message-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-area::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.message-area::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.message-area::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.message-item {
+  display: flex;
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-item.user {
+  justify-content: flex-end;
+}
+
+.message-item.ai {
+  justify-content: flex-start;
+}
+
+.message-content {
+  max-width: 80%;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.message-item.user .message-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.message-item.user .message-content::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 12px solid #764ba2;
+  transform: rotate(45deg);
+}
+
+.message-item.ai .message-content {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.message-item.ai .message-content::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 12px solid #f8f9fa;
+  transform: rotate(-45deg);
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #666666;
+}
+
+.message-item.user .message-header {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-author {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.message-body {
+  font-size: 14px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.ai-message {
+  white-space: pre-wrap;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  border: 1px solid #e9ecef;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.loading-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 16px 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.input-area {
+  padding: 20px;
+  background: #ffffff;
+  border-top: 1px solid #e9ecef;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border-radius: 16px 16px 0 0;
+  margin: 0 16px 16px;
+}
+
+.message-input {
+  font-size: 14px;
+  border-radius: 16px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #f8f9fa;
+  padding: 12px 16px;
+}
+
+.message-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+  background: #ffffff;
+}
+
+.input-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.input-actions .ant-btn {
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  width: 80px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.input-actions .ant-btn:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px);
+}
+
+.input-actions .ant-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-actions .ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.input-actions .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a428f 100%);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.input-actions .ant-btn-primary:active {
+  background: linear-gradient(135deg, #4d60c4 0%, #5a3778 100%);
+  box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
+}
+
+.web-preview-section {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.preview-title {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e9ecef;
+  margin: 0;
+  color: #333333;
+  background: #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.preview-placeholder {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
+  opacity: 0.3;
+}
+
+.web-preview-iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+  transition: opacity 0.3s ease;
+}
+
+.web-preview-iframe {
+  opacity: 0;
+}
+
+.web-preview-iframe[src] {
+  opacity: 1;
+}
+
+@media (max-width: 1200px) {
+  .chat-section {
+    width: 50%;
+  }
+  
+  .web-preview-section {
+    width: 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 12px 16px;
+  }
+  
+  .app-content {
+    flex-direction: column;
+  }
+  
+  .chat-section {
+    width: 100%;
+    height: 60%;
+    border-right: none;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .message-area {
+    padding: 16px;
+  }
+  
+  .input-area {
+    padding: 16px;
+  }
+  
+  .web-preview-section {
+    width: 100%;
+    height: 40%;
+  }
+  
+  .preview-title {
+    padding: 16px;
+    font-size: 16px;
+  }
+}
+
+.app-detail-card {
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.app-detail-section {
+  margin-bottom: 20px;
+}
+
+.app-detail-section h4 {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 8px;
+}
+
+.app-creator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.creator-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.app-info-item {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+.info-label {
+  font-weight: 500;
+}
+
+.info-value {
+  color: #999;
+}
+
+.app-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.deploy-success-content {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.success-icon {
+  font-size: 48px;
+  color: #52c41a;
+  background: rgba(82, 196, 26, 0.1);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.deploy-success-content h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.deploy-success-content p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.deploy-url-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.deploy-url-container .ant-input {
+  flex: 1;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.deploy-url-container .ant-btn {
+  white-space: nowrap;
+}
+
+.deploy-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.deploy-actions .ant-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  line-height: 1;
+}
+
+.deploy-actions .ant-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.deploy-actions .ant-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+}
+
+.deploy-actions .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a428f 100%);
+}
+
+@media (max-width: 480px) {
+  .app-header-right {
+    gap: 8px;
+  }
+  
+  .app-header-right .ant-btn {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+  
+  .message-content {
+    max-width: 90%;
+    padding: 12px 16px;
+  }
+  
+  .input-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .input-actions .ant-btn {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .deploy-url-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .deploy-url-container .ant-btn {
+    margin-top: 8px;
+    align-self: flex-end;
+  }
+  
+  .deploy-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+</style>

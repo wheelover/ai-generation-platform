@@ -71,15 +71,14 @@ const validateCheckPassword = (rule: unknown, value: string, callback: (error?: 
 const handleSubmit = async (values: API.UserRegisterRequest) => {
   const res = await userRegister(values)
   // 注册成功，跳转到登录页面
-  if (res.data && res.data.code === 0) {
+  if (typeof res === 'number' && res > 0) {
     message.success('注册成功')
     router.push({
       path: '/user/login',
       replace: true,
     })
   } else {
-    const errorMessage = res.data?.message || '注册失败'
-    message.error(errorMessage)
+    message.error('注册失败')
   }
 }
 </script>
