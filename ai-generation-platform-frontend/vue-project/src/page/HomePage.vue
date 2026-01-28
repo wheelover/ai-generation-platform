@@ -2,8 +2,8 @@
   <div id="homePage">
     <!-- 网站标题 -->
     <div class="hero-section">
-      <h1 class="site-title">一句话 <span class="logo">🐱</span> 呈所想</h1>
-      <p class="site-desc">与 AI 对话轻松创建应用和网站</p>
+      <h1 class="site-title">AI 应用生成平台</h1>
+      <p class="site-desc">一句话轻松创建网站应用</p>
       
       <!-- 用户提示词输入框 -->
       <div class="prompt-input-section">
@@ -11,24 +11,22 @@
           <a-form-item>
             <a-input
               v-model:value="promptForm.initPrompt"
-              placeholder="使用 NoCode 创建一个高效的小工具，帮我计算......"
+              placeholder="帮我创建个人博客网站"
               :auto-size="{ minRows: 3, maxRows: 6 }"
               class="prompt-input"
             />
           </a-form-item>
           <div class="prompt-actions">
-            <a-button icon="upload">上传</a-button>
-            <a-button>优化</a-button>
-            <a-button type="primary" html-type="submit" icon="arrow-up">创建应用</a-button>
+            <a-button type="primary" html-type="submit" icon="rocket">创建应用</a-button>
           </div>
         </a-form>
         
         <!-- 快速模板 -->
         <div class="quick-templates">
-          <a-button size="small">波普风电商页面</a-button>
-          <a-button size="small">企业网站</a-button>
-          <a-button size="small">电商运营后台</a-button>
-          <a-button size="small">暗黑话题社区</a-button>
+          <a-button size="small" @click="setPrompt('帮我创建一个个人博客网站，包含首页、关于我、文章列表、文章详情、留言板等页面，风格简洁现代，支持深色模式，采用React技术栈实现')">个人博客网站</a-button>
+          <a-button size="small" @click="setPrompt('帮我创建一个企业官网，包含首页、关于我们、产品中心、新闻动态、联系我们等页面，风格专业大气，采用React和TailwindCSS实现，支持响应式布局')">企业官方网站</a-button>
+          <a-button size="small" @click="setPrompt('帮我创建一个在线商城系统，包含商品展示、购物车、结算支付、订单管理、个人中心等功能，界面美观时尚，采用React和Redux实现，支持移动端响应式设计')">在线商城平台</a-button>
+          <a-button size="small" @click="setPrompt('帮我创建一个任务管理工具看板，包含项目创建、任务分配、进度追踪、团队协作、消息通知等功能，界面清晰高效，采用React和Dnd-kit实现，支持拖拽操作')">团队任务看板</a-button>
         </div>
       </div>
     </div>
@@ -213,6 +211,11 @@ const goToUpdate = (appId: number | string) => {
   router.push(`/app/update/${appId}`)
 }
 
+// 设置提示词
+const setPrompt = (prompt: string) => {
+  promptForm.initPrompt = prompt
+}
+
 // 页面加载时获取数据
 onMounted(() => {
   fetchMyApps()
@@ -222,20 +225,21 @@ onMounted(() => {
 
 <style scoped>
 #homePage {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .hero-section {
   text-align: center;
-  padding: 80px 40px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  margin-bottom: 60px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 100px 40px;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #16213e 100%);
+  border-radius: 0;
+  margin-bottom: 0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   position: relative;
   overflow: hidden;
+  width: 100%;
 }
 
 .hero-section::before {
@@ -245,9 +249,23 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
-  opacity: 0.5;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(66, 153, 225, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(138, 43, 226, 0.2) 0%, transparent 50%),
+    linear-gradient(90deg, transparent 50%, rgba(66, 153, 225, 0.03) 50%),
+    linear-gradient(rgba(66, 153, 225, 0.03) 50%, transparent 50%);
+  background-size: 100% 100%, 100% 100%, 60px 60px, 60px 60px;
   z-index: 0;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+  100% {
+    background-position: 0 0, 0 0, 60px 60px, 60px 60px;
+  }
 }
 
 .hero-section > * {
@@ -256,62 +274,98 @@ onMounted(() => {
 }
 
 .site-title {
-  font-size: 42px;
-  font-weight: bold;
+  font-size: 64px;
+  font-weight: 900;
   margin-bottom: 20px;
   color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  letter-spacing: -0.5px;
+  text-shadow: 0 0 30px rgba(66, 153, 225, 0.6), 0 0 60px rgba(138, 43, 226, 0.4);
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, #ffffff 0%, #64b5f6 50%, #9c27b0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+  0% {
+    text-shadow: 0 0 20px rgba(66, 153, 225, 0.6), 0 0 40px rgba(138, 43, 226, 0.4);
+  }
+  100% {
+    text-shadow: 0 0 30px rgba(66, 153, 225, 0.8), 0 0 60px rgba(138, 43, 226, 0.6);
+  }
 }
 
 .logo {
-  font-size: 36px;
-  margin: 0 8px;
+  font-size: 40px;
+  margin: 0 12px;
 }
 
 .site-desc {
-  font-size: 20px;
+  font-size: 24px;
   color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 40px;
+  margin-bottom: 48px;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  font-weight: 300;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(100, 181, 246, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .prompt-input-section {
-  max-width: 800px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
 .prompt-input {
   font-size: 16px;
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  border: 1px solid rgba(66, 153, 225, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(66, 153, 225, 0.2);
   transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .prompt-input:focus {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 40px rgba(66, 153, 225, 0.4), 0 0 30px rgba(138, 43, 226, 0.3);
+  transform: translateY(-2px);
+  border-color: rgba(66, 153, 225, 0.6);
 }
 
 .prompt-actions {
   display: flex;
   gap: 16px;
-  justify-content: flex-end;
-  margin-bottom: 32px;
+  justify-content: center;
+  margin-top: 24px;
 }
 
 .prompt-actions .ant-btn {
-  border-radius: 8px;
-  font-weight: 500;
+  border-radius: 12px;
+  font-weight: 600;
   transition: all 0.3s ease;
+  padding: 0 32px;
+  height: 48px;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  background: linear-gradient(135deg, #4299e1 0%, #8a2be2 100%);
+  border: none;
+  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
+  color: white;
 }
 
 .prompt-actions .ant-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(66, 153, 225, 0.6), 0 0 20px rgba(138, 43, 226, 0.4);
+  background: linear-gradient(135deg, #3182ce 0%, #7b1fa2 100%);
 }
 
 .quick-templates {
@@ -319,39 +373,67 @@ onMounted(() => {
   gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: 32px;
 }
 
 .quick-templates .ant-btn {
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  border: 1px solid rgba(66, 153, 225, 0.3);
+  background: rgba(66, 153, 225, 0.1);
+  color: rgba(255, 255, 255, 0.9);
   transition: all 0.3s ease;
+  font-style: normal;
+  box-shadow: 0 2px 10px rgba(66, 153, 225, 0.2);
 }
 
 .quick-templates .ant-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(66, 153, 225, 0.2);
+  border-color: rgba(66, 153, 225, 0.6);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  color: #ffffff;
+  font-style: normal;
+  box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
 }
 
 .app-section {
-  margin-bottom: 60px;
-  padding: 32px;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
-  min-height: 920px;
+  margin-bottom: 0;
+  padding: 48px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);
+  border-radius: 0;
+  box-shadow: none;
+  min-height: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(90deg, transparent 50%, rgba(66, 153, 225, 0.02) 50%),
+    linear-gradient(rgba(66, 153, 225, 0.02) 50%, transparent 50%);
+  background-size: 40px 40px;
+  z-index: 0;
 }
 
 .section-title {
-  font-size: 28px;
-  font-weight: bold;
+  font-size: 32px;
+  font-weight: 800;
   margin-bottom: 32px;
-  color: #333;
+  color: #1a202c;
   position: relative;
   padding-bottom: 12px;
+  background: linear-gradient(135deg, #1a202c 0%, #4299e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 10px rgba(66, 153, 225, 0.3);
+  position: relative;
+  z-index: 1;
 }
 
 .section-title::after {
@@ -361,8 +443,9 @@ onMounted(() => {
   left: 0;
   width: 60px;
   height: 4px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #4299e1 0%, #8a2be2 100%);
   border-radius: 2px;
+  z-index: 1;
 }
 
 .app-list {
@@ -372,8 +455,10 @@ onMounted(() => {
 .app-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 350px;
   gap: 24px;
   margin-bottom: 32px;
+  min-height: 728px;
 }
 
 .pagination {
@@ -403,12 +488,15 @@ onMounted(() => {
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 0 15px rgba(66, 153, 225, 0.1);
+  background: white;
+  position: relative;
+  z-index: 1;
 }
 
 .app-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15), 0 0 30px rgba(66, 153, 225, 0.2);
 }
 
 .app-card .ant-card-body {
@@ -442,31 +530,67 @@ onMounted(() => {
 .app-actions .ant-btn {
   transition: all 0.3s ease;
   border-radius: 6px;
+  color: #4299e1;
 }
 
 .app-actions .ant-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
+  color: #3182ce;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  margin-top: 32px;
+  position: relative;
+  z-index: 1;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #666666;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+}
+
+.pagination-controls .ant-pagination-item-active {
+  background: linear-gradient(135deg, #4299e1 0%, #8a2be2 100%);
+  border-color: #4299e1;
+}
+
+.pagination-controls .ant-pagination-item-active a {
+  color: white;
+}
+
+.pagination-controls .ant-pagination-item:hover {
+  border-color: #4299e1;
+  box-shadow: 0 0 10px rgba(66, 153, 225, 0.3);
 }
 
 /* 分页组件样式已在上方定义，此处不再重复定义 */
 
 @media (max-width: 768px) {
   #homePage {
-    padding: 16px;
+    padding: 0;
   }
   
   .hero-section {
-    padding: 40px 24px;
-    margin-bottom: 40px;
+    padding: 60px 24px;
+    margin-bottom: 0;
   }
   
   .site-title {
-    font-size: 32px;
+    font-size: 36px;
   }
   
   .site-desc {
-    font-size: 16px;
+    font-size: 18px;
     margin-bottom: 32px;
   }
   
@@ -477,12 +601,11 @@ onMounted(() => {
   
   .prompt-actions .ant-btn {
     width: 100%;
-    max-width: 200px;
+    max-width: 280px;
   }
   
   .app-section {
     padding: 24px;
-    margin-bottom: 40px;
   }
   
   .section-title {
@@ -506,7 +629,7 @@ onMounted(() => {
 
 @media (max-width: 480px) {
   .hero-section {
-    padding: 32px 16px;
+    padding: 40px 16px;
   }
   
   .site-title {

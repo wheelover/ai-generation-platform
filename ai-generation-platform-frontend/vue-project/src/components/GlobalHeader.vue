@@ -100,8 +100,8 @@ const originItems = [
   },
   {
     key: 'others',
-    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
-    title: '编程导航',
+    label: h('a', { href: 'https://github.com/wheelover', target: '_blank' }, 'wheelover'),
+    title: 'wh',
   },
 ]
 

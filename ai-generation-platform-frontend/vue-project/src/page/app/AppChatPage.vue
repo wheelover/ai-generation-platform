@@ -17,26 +17,12 @@
         <a-dropdown placement="bottomRight" trigger="click">
           <a-button>应用详情</a-button>
           <template #overlay>
-            <a-card class="app-detail-card" style="width: 300px;">
-              <div class="app-detail-section">
-                <h4>应用基础信息</h4>
-                <div class="app-creator">
-                  <a-avatar :size="40" :src="appInfo.user?.userAvatar || ''">{{ appInfo.user?.userName?.charAt(0) || '?' }}</a-avatar>
-                  <span class="creator-name">{{ appInfo.user?.userName || '未知用户' }}</span>
-                </div>
-                <div class="app-info-item">
-                  <span class="info-label">创建时间：</span>
-                  <span class="info-value">{{ appInfo.createTime ? formatDate(appInfo.createTime) : '未知时间' }}</span>
-                </div>
-              </div>
-              <div v-if="isOwner" class="app-detail-section">
-                <h4>操作</h4>
-                <div class="app-actions">
-                  <a-button type="link" @click="goToUpdate">修改</a-button>
-                  <a-button type="link" @click="deleteCurrentApp">删除</a-button>
-                </div>
-              </div>
-            </a-card>
+            <AppDetailCard 
+              :appInfo="appInfo" 
+              :isOwner="isOwner" 
+              @edit="goToUpdate" 
+              @delete="deleteCurrentApp" 
+            />
           </template>
         </a-dropdown>
         <a-button type="primary" @click="deployApp" :loading="deploying">部署</a-button>
@@ -49,18 +35,14 @@
       <div class="chat-section">
         <!-- 消息区域 -->
         <div class="message-area" ref="messageArea">
-          <div v-for="(message, index) in messages" :key="index" class="message-item" :class="message.role">
-            <div class="message-content">
-              <div class="message-header">
-                <span class="message-author">{{ message.role === 'user' ? '我' : 'AI' }}</span>
-                <span class="message-time">{{ message.timestamp }}</span>
-              </div>
-              <div class="message-body">
-                <pre v-if="message.role === 'ai'" class="ai-message">{{ message.content }}</pre>
-                <p v-else class="user-message">{{ message.content }}</p>
-              </div>
-            </div>
-          </div>
+          <MessageItem 
+            v-for="(message, index) in messages" 
+            :key="index" 
+            :message="{
+              ...message,
+              content: message.role === 'ai' ? renderMarkdown(message.content) : message.content
+            }" 
+          />
           <div v-if="loading" class="loading-message">
             <a-spin tip="AI 正在生成..." />
           </div>
@@ -72,7 +54,7 @@
             <a-form-item>
               <a-input
                 v-model:value="inputForm.content"
-                placeholder="输入消息..."
+                placeholder="请描述你想生成的网站，越详细效果越好哦"
                 :auto-size="{ minRows: 2, maxRows: 6 }"
                 class="message-input"
                 :disabled="!isOwner"
@@ -80,17 +62,7 @@
               />
             </a-form-item>
             <div class="input-actions">
-              <a-button :disabled="!isOwner">
-                <template #icon>
-                  <span class="icon">📤</span>
-                </template>
-              </a-button>
-              <a-button :disabled="!isOwner">优化</a-button>
-              <a-button type="primary" html-type="submit" :disabled="!isOwner">
-                <template #icon>
-                  <span class="icon">🚀</span>
-                </template>
-              </a-button>
+              <a-button type="primary" html-type="submit" :disabled="!isOwner" icon="rocket">生成网站</a-button>
             </div>
           </a-form>
         </div>
@@ -114,36 +86,47 @@
   </div>
   
   <!-- 部署成功卡片 -->
-  <a-modal
-    v-model:open="deploySuccess"
-    title="部署成功"
-    :footer="null"
-    :width="400"
-    :closable="true"
-    @cancel="closeDeployCard"
-  >
-    <div class="deploy-success-content">
-      <div class="success-icon">✓</div>
-      <h3>网站部署成功！</h3>
-      <p>你的网站已经成功部署，可以通过以下链接访问：</p>
-      <div class="deploy-url-container">
-        <a-input v-model:value="deployUrl" readonly />
-        <a-button type="text" @click="copyDeployUrl" icon="copy">复制</a-button>
-      </div>
-      <div class="deploy-actions">
-        <a-button type="primary" @click="visitWebsite">访问网站</a-button>
-        <a-button @click="closeDeployCard">关闭</a-button>
-      </div>
-    </div>
-  </a-modal>
+  <DeploySuccessModal 
+    :visible="deploySuccess" 
+    :deployUrl="deployUrl" 
+    @close="closeDeployCard" 
+    @visit="visitWebsite" 
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { getAppVoById, chatToGenCode, deployApp as deployAppApi, deleteApp } from '@/api/appController'
+import { getAppVoById, deployApp as deployAppApi, deleteApp } from '@/api/appController'
 import { useLoginUserStore } from '@/stores/loginUser'
+import AppDetailCard from '@/components/AppDetailCard.vue'
+import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
+import MessageItem from '@/components/MessageItem.vue'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
+
+// Create markdown-it instance with code highlighting support
+const md = new MarkdownIt({
+  breaks: true,
+  html: true,
+  linkify: true,
+  typographer: true,
+  highlight: function(str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value
+      } catch {}
+    }
+    return hljs.highlightAuto(str).value
+  }
+})
+
+// Function to render markdown content
+const renderMarkdown = (content: string) => {
+  return md.render(content)
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -221,7 +204,7 @@ const sendInitialPrompt = async () => {
       timestamp: new Date().toLocaleString()
     })
     
-    const url = `http://localhost:8123/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(appInfo.value.initPrompt)}`
+    const url = `${import.meta.env.VITE_API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(appInfo.value.initPrompt)}`
     const response = await fetch(url, {
       credentials: 'include'
     })
@@ -288,7 +271,7 @@ const sendInitialPrompt = async () => {
     
     messages.value[aiMessageIndex].content = displayContent
     // 生成完成后，设置网页预览URL
-    webPreviewUrl.value = `http://localhost:8123/api/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+    webPreviewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
   } catch (error) {
     console.error('AI生成失败:', error)
     message.error('AI生成失败')
@@ -326,7 +309,7 @@ const sendMessage = async () => {
       timestamp: new Date().toLocaleString()
     })
     
-    const url = `http://localhost:8123/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(content)}`
+    const url = `${import.meta.env.VITE_API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(content)}`
     const response = await fetch(url, {
       credentials: 'include'
     })
@@ -393,7 +376,7 @@ const sendMessage = async () => {
     
     messages.value[aiMessageIndex].content = displayContent
     // 生成完成后，更新网页预览URL
-    webPreviewUrl.value = `http://localhost:8123/api/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+    webPreviewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
   } catch (error) {
     console.error('AI生成失败:', error)
     message.error('AI生成失败')
@@ -472,18 +455,7 @@ const visitWebsite = () => {
   }
 }
 
-// 复制部署URL
-const copyDeployUrl = () => {
-  if (deployUrl.value) {
-    navigator.clipboard.writeText(deployUrl.value)
-      .then(() => {
-        message.success('复制成功')
-      })
-      .catch(() => {
-        message.error('复制失败')
-      })
-  }
-}
+
 
 // 监听消息变化，自动滚动到底部
 watch(messages, () => {
@@ -567,11 +539,11 @@ onMounted(() => {
 .message-area {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+  gap: 16px;
+  background: #f8f9fa;
 }
 
 .message-area::-webkit-scrollbar {
@@ -592,111 +564,7 @@ onMounted(() => {
   background: #a8a8a8;
 }
 
-.message-item {
-  display: flex;
-  animation: messageSlideIn 0.3s ease-out;
-}
 
-@keyframes messageSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.message-item.user {
-  justify-content: flex-end;
-}
-
-.message-item.ai {
-  justify-content: flex-start;
-}
-
-.message-content {
-  max-width: 80%;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.message-item.user .message-content {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.message-item.user .message-content::after {
-  content: '';
-  position: absolute;
-  bottom: 8px;
-  right: -8px;
-  width: 0;
-  height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-top: 12px solid #764ba2;
-  transform: rotate(45deg);
-}
-
-.message-item.ai .message-content {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-}
-
-.message-item.ai .message-content::after {
-  content: '';
-  position: absolute;
-  bottom: 8px;
-  left: -8px;
-  width: 0;
-  height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-top: 12px solid #f8f9fa;
-  transform: rotate(-45deg);
-}
-
-.message-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: #666666;
-}
-
-.message-item.user .message-header {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.message-author {
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.message-body {
-  font-size: 14px;
-  line-height: 1.6;
-  word-wrap: break-word;
-}
-
-.ai-message {
-  white-space: pre-wrap;
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 12px;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
-  border: 1px solid #e9ecef;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
-}
 
 .loading-message {
   display: flex;
@@ -722,13 +590,13 @@ onMounted(() => {
 }
 
 .input-area {
-  padding: 20px;
+  padding: 16px 20px;
   background: #ffffff;
   border-top: 1px solid #e9ecef;
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.03);
   transition: all 0.3s ease;
-  border-radius: 16px 16px 0 0;
-  margin: 0 16px 16px;
+  border-radius: 0;
+  margin: 0;
 }
 
 .message-input {
@@ -761,12 +629,21 @@ onMounted(() => {
   font-weight: 500;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 14px;
-  width: 80px;
-  height: 36px;
-  display: flex;
+  width: 120px;
+  height: 40px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
+  font-style: normal;
+  line-height: 1;
+  padding: 0 16px;
+}
+
+.input-actions .ant-btn span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .input-actions .ant-btn:hover {
@@ -807,7 +684,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
 }
 
 .preview-title {
@@ -903,136 +780,9 @@ onMounted(() => {
   }
 }
 
-.app-detail-card {
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
 
-.app-detail-section {
-  margin-bottom: 20px;
-}
 
-.app-detail-section h4 {
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 8px;
-}
 
-.app-creator {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  gap: 12px;
-}
-
-.creator-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.app-info-item {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #666;
-}
-
-.info-label {
-  font-weight: 500;
-}
-
-.info-value {
-  color: #999;
-}
-
-.app-actions {
-  display: flex;
-  gap: 16px;
-}
-
-.deploy-success-content {
-  text-align: center;
-  padding: 20px 0;
-}
-
-.success-icon {
-  font-size: 48px;
-  color: #52c41a;
-  background: rgba(82, 196, 26, 0.1);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 20px;
-}
-
-.deploy-success-content h3 {
-  margin: 0 0 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-}
-
-.deploy-success-content p {
-  margin: 0 0 24px;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.5;
-}
-
-.deploy-url-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.deploy-url-container .ant-input {
-  flex: 1;
-  border-radius: 8px;
-  background: #f8f9fa;
-}
-
-.deploy-url-container .ant-btn {
-  white-space: nowrap;
-}
-
-.deploy-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.deploy-actions .ant-btn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  line-height: 1;
-}
-
-.deploy-actions .ant-btn:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.deploy-actions .ant-btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: transparent;
-}
-
-.deploy-actions .ant-btn-primary:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a428f 100%);
-}
 
 @media (max-width: 480px) {
   .app-header-right {

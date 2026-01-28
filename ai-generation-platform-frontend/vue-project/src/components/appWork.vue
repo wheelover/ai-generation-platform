@@ -8,7 +8,15 @@
       </div>
     </div>
     <div class="app-info">
-      <h3 class="app-title">{{ work.appName || '未命名应用' }}</h3>
+      <div class="app-creator-row">
+        <div class="app-creator-left">
+          <a-avatar :size="36" :src="work.user?.userAvatar || ''">{{ work.user?.userName?.charAt(0) || '?' }}</a-avatar>
+        </div>
+        <div class="app-creator-right">
+          <h3 class="app-title">{{ work.appName || '未命名应用' }}</h3>
+          <span class="creator-name">{{ work.user?.userName || '未知用户' }}</span>
+        </div>
+      </div>
       <p class="app-time">创建于 {{ work.createTime ? formatDate(work.createTime) : '未知时间' }}</p>
       <div class="app-actions">
         <a-button type="link" size="small" @click="work.id && $emit('viewChat', work.id)">查看对话</a-button>
@@ -30,6 +38,10 @@ interface AppWork {
   createTime?: string | Date
   codeGenType?: string
   deployKey?: string
+  user?: {
+    userName?: string
+    userAvatar?: string
+  }
 }
 
 const props = defineProps<{
@@ -44,7 +56,7 @@ const emit = defineEmits<{
 
 const viewWork = () => {
   if (props.work.deployKey) {
-    window.open(`http://localhost/${props.work.deployKey}`, '_blank')
+    window.open(`${import.meta.env.VITE_DEPLOY_DOMAIN}/${props.work.deployKey}`, '_blank')
   }
 }
 
@@ -156,6 +168,50 @@ const formatDate = (date: string | Date): string => {
 .app-actions .ant-btn:hover {
   color: #667eea;
   text-decoration: underline;
+}
+
+.app-creator-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.app-creator-left {
+  flex-shrink: 0;
+}
+
+.app-creator-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.app-creator-right .app-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333333;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creator-name {
+  font-size: 13px;
+  color: #666666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-time {
+  font-size: 12px;
+  color: #999999;
+  margin: 0 0 12px 0;
 }
 
 /* 响应式设计 */
