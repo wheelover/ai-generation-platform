@@ -35,9 +35,19 @@
       <div class="chat-section">
         <!-- 消息区域 -->
         <div class="message-area" ref="messageArea">
+          <!-- 加载更多按钮 -->
+          <div v-if="hasMore" class="load-more-container">
+            <a-button 
+              type="link" 
+              @click="loadMoreHistory" 
+              :loading="loadingMore"
+            >
+              加载更多
+            </a-button>
+          </div>
           <MessageItem 
             v-for="(message, index) in messages" 
-            :key="index" 
+            :key="message.id || index" 
             :message="{
               ...message,
               content: message.role === 'ai' ? renderMarkdown(message.content) : message.content
@@ -99,6 +109,7 @@ import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { getAppVoById, deployApp as deployAppApi, deleteApp } from '@/api/appController'
+import { getLatestChatHistory, getMoreChatHistory } from '@/api/chatHistoryController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import AppDetailCard from '@/components/AppDetailCard.vue'
 import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
@@ -131,7 +142,6 @@ const renderMarkdown = (content: string) => {
 const router = useRouter()
 const route = useRoute()
 const appId = Number(route.params.id)
-const isViewMode = route.query.view === '1'
 
 // 登录用户 store
 const loginUserStore = useLoginUserStore()
@@ -141,7 +151,7 @@ const isOwner = ref(false)
 // 应用信息
 const appInfo = ref<API.AppVO>({})
 // 消息列表
-const messages = ref<Array<{ role: 'user' | 'ai'; content: string; timestamp: string }>>([])
+const messages = ref<Array<{ id?: number; role: 'user' | 'ai'; content: string; timestamp: string }>>([])
 // 输入表单
 const inputForm = reactive({ content: '' })
 // 加载状态
@@ -157,6 +167,12 @@ const deployUrl = ref('')
 // 消息区域引用
 const messageArea = ref<HTMLElement>()
 
+// 游标查询相关状态
+const hasMore = ref(false)
+const loadingMore = ref(false)
+const cursor = ref<number | undefined>()
+const limit = 10
+
 // 获取应用信息
 const fetchAppInfo = async () => {
   try {
@@ -171,8 +187,41 @@ const fetchAppInfo = async () => {
       // 判断是否为应用所有者
       isOwner.value = loginUserStore.loginUser.id === appInfo.value.userId
       
-      // 初始化消息列表，将应用的初始提示词作为用户消息
-      if (appInfo.value.initPrompt) {
+      // 获取聊天历史
+      await fetchChatHistory()
+    }
+  } catch {
+    message.error('获取应用信息失败')
+  }
+}
+
+// 获取聊天历史
+const fetchChatHistory = async () => {
+  try {
+    // 调用后端接口获取最新聊天历史
+    const res = await getLatestChatHistory({ appId, limit })
+    if (res.data && res.data.code === 0 && res.data.data) {
+      const chatHistoryList = res.data.data
+      
+      // 转换为前端消息格式
+      messages.value = chatHistoryList.map((item: any) => ({
+        id: item.id,
+        role: (item.role === 'ai' ? 'ai' : 'user') as 'ai' | 'user',
+        content: String(item.content || ''),
+        timestamp: String(item.createTime || '')
+      }))
+      
+      // 检查是否有更多消息
+      hasMore.value = chatHistoryList.length >= limit
+      
+      // 如果有消息，设置游标为最早消息的ID
+      if (chatHistoryList.length > 0) {
+        cursor.value = chatHistoryList[0].id
+      }
+      
+      // 判断是否需要自动发送初始消息
+      if (isOwner.value && messages.value.length === 0 && appInfo.value.initPrompt) {
+        // 没有对话历史，自动发送初始提示词
         messages.value = [
           {
             role: 'user',
@@ -180,14 +229,55 @@ const fetchAppInfo = async () => {
             timestamp: new Date().toLocaleString()
           }
         ]
-        // 非查看模式下自动发送初始提示词给AI
-        if (!isViewMode) {
-          sendInitialPrompt()
-        }
+        sendInitialPrompt()
+      }
+      
+      // 如果有至少2条对话记录，设置网站预览URL
+      if (messages.value.length >= 2) {
+        webPreviewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
       }
     }
-  } catch {
-    message.error('获取应用信息失败')
+  } catch (error) {
+    console.error('获取聊天历史失败:', error)
+    message.error('获取聊天历史失败')
+  }
+}
+
+// 加载更多历史消息
+const loadMoreHistory = async () => {
+  if (loadingMore.value || !cursor.value) return
+  
+  loadingMore.value = true
+  try {
+    // 调用后端接口获取更多聊天历史
+    const res = await getMoreChatHistory({ appId, cursor: cursor.value, pageSize: limit })
+    if (res.data && res.data.code === 0 && res.data.data) {
+      const chatHistoryList = res.data.data
+      
+      // 转换为前端消息格式
+      const moreMessages: Array<{ id?: number; role: 'user' | 'ai'; content: string; timestamp: string }> = chatHistoryList.map((item: any) => ({
+        id: item.id,
+        role: (item.role === 'ai' ? 'ai' : 'user') as 'ai' | 'user',
+        content: String(item.content || ''),
+        timestamp: String(item.createTime || '')
+      }))
+      
+      // 将新消息添加到列表前面
+      messages.value = [...moreMessages, ...messages.value]
+      
+      // 检查是否有更多消息
+      hasMore.value = chatHistoryList.length >= limit
+      
+      // 更新游标为最早消息的ID
+      if (chatHistoryList.length > 0) {
+        cursor.value = chatHistoryList[0].id
+      }
+    }
+  } catch (error) {
+    console.error('加载更多聊天历史失败:', error)
+    message.error('加载更多聊天历史失败')
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -272,6 +362,9 @@ const sendInitialPrompt = async () => {
     messages.value[aiMessageIndex].content = displayContent
     // 生成完成后，设置网页预览URL
     webPreviewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+    
+    // 重新获取聊天历史，确保消息列表与后端同步
+    await fetchChatHistory()
   } catch (error) {
     console.error('AI生成失败:', error)
     message.error('AI生成失败')
@@ -377,6 +470,9 @@ const sendMessage = async () => {
     messages.value[aiMessageIndex].content = displayContent
     // 生成完成后，更新网页预览URL
     webPreviewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+    
+    // 重新获取聊天历史，确保消息列表与后端同步
+    await fetchChatHistory()
   } catch (error) {
     console.error('AI生成失败:', error)
     message.error('AI生成失败')
@@ -564,7 +660,14 @@ onMounted(() => {
   background: #a8a8a8;
 }
 
-
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 16px;
+}
 
 .loading-message {
   display: flex;

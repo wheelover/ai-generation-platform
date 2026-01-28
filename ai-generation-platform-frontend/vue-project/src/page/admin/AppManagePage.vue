@@ -16,7 +16,7 @@
           </a-select>
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" html-type="submit">搜索</a-button>
+          <a-button type="primary" html-type="submit" :loading="loading">搜索</a-button>
           <a-button @click="resetSearch">重置</a-button>
         </a-form-item>
       </a-form>
@@ -29,16 +29,23 @@
         :data-source="appList"
         :pagination="pagination"
         @change="doTableChange"
+        :loading="loading"
         row-key="id"
+        :locale="{
+          emptyText: '暂无应用数据，请尝试调整搜索条件'
+        }"
       >
-        <template #action="{ record }">
-          <a-space size="small">
-            <a-button type="link" size="small" @click="goToEdit(record.id)">编辑</a-button>
-            <a-button type="link" size="small" danger @click="doDelete(record.id)">删除</a-button>
-            <a-button type="link" size="small" @click="setAsFeatured(record.id)">{{ record.priority === 99 ? '取消精选' : '精选' }}</a-button>
-          </a-space>
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'action'">
+            <a-space size="small">
+              <a-button type="link" size="small" @click="goToEdit(record.id)">编辑</a-button>
+              <a-button type="link" size="small" danger @click="doDelete(record.id)">删除</a-button>
+              <a-button type="link" size="small" @click="setAsFeatured(record.id)">{{ record.priority === 99 ? '取消精选' : '精选' }}</a-button>
+            </a-space>
+          </template>
         </template>
       </a-table>
+
     </div>
   </div>
 </template>
@@ -64,6 +71,8 @@ const searchParams = reactive({
 const appList = ref<Array<API.AppVO>>([])
 // 总数
 const total = ref(0)
+// 加载状态
+const loading = ref(false)
 
 // 表格列配置
 const columns = [
@@ -81,35 +90,49 @@ const columns = [
     title: '生成类型',
     dataIndex: 'codeGenType',
     key: 'codeGenType',
-    customRender: (text: string) => {
-      return getCodeGenTypeLabel(text)
+    render: (text: string) => {
+      const label = getCodeGenTypeLabel(text) || text
+      return label
     }
   },
   {
     title: '创建用户',
-    dataIndex: 'createUser',
-    key: 'createUser'
+    dataIndex: 'user',
+    key: 'user',
+render: (user: any) => {
+  return user?.userName ? user.userName : '-' 
+}
   },
   {
     title: '优先级',
     dataIndex: 'priority',
     key: 'priority',
-    customRender: (text: number) => {
-      return text === 99 ? '<span style="color: #1890ff;">精选</span>' : text
+    render: (text: number) => {
+      if (text === 99) {
+        return '精选'
+      } else {
+        return text || text === 0 ? text : '-' 
+      }
+    },
+    customCell: (record: any) => {
+      return record && record.priority === 99 ? { style: { color: '#1890ff' } } : {}
     }
   },
   {
     title: '创建时间',
     dataIndex: 'createTime',
     key: 'createTime',
-    customRender: (text: string) => {
-      return new Date(text).toLocaleString()
+    render: (text: string) => {
+      try {
+        return text ? new Date(text).toLocaleString() : '-' 
+      } catch {
+        return '-' 
+      }
     }
   },
   {
     title: '操作',
-    key: 'action',
-    slots: { customRender: 'action' }
+    key: 'action'
   }
 ]
 
@@ -134,14 +157,25 @@ const resetSearch = () => {
 
 // 获取应用列表
 const fetchApps = async () => {
+  loading.value = true
   try {
     const res = await listAppVoByPageByAdmin(searchParams)
     if (res.data && res.data.code === 0 && res.data.data) {
       appList.value = res.data.data.records || []
       total.value = res.data.data.totalRow || 0
+      console.log('获取应用用户名:', appList.value[0].user?.userName)
+    } else {
+      appList.value = []
+      total.value = 0
+      message.warning('获取应用列表为空')
     }
-  } catch {
-    message.error('获取应用列表失败')
+  } catch (error) {
+    console.error('获取应用列表失败:', error)
+    appList.value = []
+    total.value = 0
+    message.error('获取应用列表失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -165,10 +199,11 @@ const doDelete = async (id: number) => {
       message.success('应用删除成功')
       fetchApps()
     } else {
-      message.error('应用删除失败')
+      message.error('应用删除失败，请稍后重试')
     }
-  } catch {
-    message.error('应用删除失败')
+  } catch (error) {
+    console.error('删除应用失败:', error)
+    message.error('应用删除失败，请稍后重试')
   }
 }
 
@@ -187,10 +222,11 @@ const setAsFeatured = async (id: number) => {
       message.success(newPriority === 99 ? '设置精选成功' : '取消精选成功')
       fetchApps()
     } else {
-      message.error('操作失败')
+      message.error('操作失败，请稍后重试')
     }
-  } catch {
-    message.error('操作失败')
+  } catch (error) {
+    console.error('设置精选失败:', error)
+    message.error('操作失败，请稍后重试')
   }
 }
 
@@ -231,6 +267,11 @@ onMounted(() => {
   padding: 24px;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  min-height: 400px;
+}
+
+.empty-state {
+  padding: 40px 0;
 }
 
 /* 响应式设计 */
@@ -245,6 +286,7 @@ onMounted(() => {
   
   .app-list {
     padding: 16px;
+    min-height: 300px;
   }
   
   .a-table {
