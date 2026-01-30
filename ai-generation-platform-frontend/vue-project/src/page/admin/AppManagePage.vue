@@ -99,9 +99,13 @@ const columns = [
     title: '创建用户',
     dataIndex: 'user',
     key: 'user',
-render: (user: any) => {
-  return user?.userName ? user.userName : '-' 
-}
+  render: (user: any) => {
+    console.log('user object:', user); // 调试
+    console.log('userName:', user?.userName); // 调试
+    
+    if (!user) return '-';
+    return user.userName || '-';
+  }
   },
   {
     title: '优先级',

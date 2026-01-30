@@ -114,9 +114,10 @@ import { useLoginUserStore } from '@/stores/loginUser'
 import AppDetailCard from '@/components/AppDetailCard.vue'
 import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
 import MessageItem from '@/components/MessageItem.vue'
+import { getStaticPreviewUrl } from '@/utils/staticResource'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
-import 'highlight.js/styles/github.css'
+import 'highlight.js/styles/github-dark.css'
 
 // Create markdown-it instance with code highlighting support
 const md = new MarkdownIt({
@@ -234,7 +235,7 @@ const fetchChatHistory = async () => {
       
       // 如果有至少2条对话记录，设置网站预览URL
       if (messages.value.length >= 2) {
-        webPreviewUrl.value = `${import.meta.env.VITE_API_BASE_URL}/static/${appInfo.value.codeGenType || 'react'}_${appId}/`
+        webPreviewUrl.value = getStaticPreviewUrl(appInfo.value.codeGenType || 'html', appId.toString())
       }
     }
   } catch (error) {
