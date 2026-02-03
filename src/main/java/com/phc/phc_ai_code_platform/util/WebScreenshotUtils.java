@@ -2,33 +2,63 @@ package com.phc.phc_ai_code_platform.util;
 
 import cn.hutool.core.img.ImgUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import com.phc.phc_ai_code_platform.exception.BusinessException;
 import com.phc.phc_ai_code_platform.exception.ErrorCode;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.File;
 import java.time.Duration;
+import java.util.UUID;
 
 @Slf4j
 public class WebScreenshotUtils {
 
-    private static final WebDriver webDriver;
+    private static final ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
 
-    static {
-        final int DEFAULT_WIDTH = 1600;
-        final int DEFAULT_HEIGHT = 900;
-        webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    /**
+     * 获取当前线程的 WebDriver
+     */
+    public static WebDriver getDriver() {
+        WebDriver driver = driverThreadLocal.get();
+        if (driver == null) {
+            final int DEFAULT_WIDTH = 1600;
+            final int DEFAULT_HEIGHT = 900;
+            driver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            driverThreadLocal.set(driver);
+        }
+        return driver;
+    }
+
+    /**
+     * 关闭当前线程的 WebDriver
+     */
+    public static void closeDriver() {
+        WebDriver driver = driverThreadLocal.get();
+        if (driver != null) {
+            try {
+                driver.quit();
+            } catch (Exception e) {
+                log.error("关闭 WebDriver 时出现异常", e);
+            } finally {
+                driverThreadLocal.remove();
+            }
+        }
     }
 
     @PreDestroy
     public void destroy() {
-        webDriver.quit();
+        closeDriver();
     }
 
     /**
@@ -105,8 +135,8 @@ public class WebScreenshotUtils {
             // 创建等待页面加载对象
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             // 等待 document.readyState 为complete
-            wait.until(webDriver ->
-                    ((JavascriptExecutor) webDriver).executeScript("return document.readyState")
+            wait.until(d ->
+                    ((JavascriptExecutor) d).executeScript("return document.readyState")
                             .equals("complete")
             );
             // 额外等待一段时间，确保动态内容加载完成
@@ -117,6 +147,48 @@ public class WebScreenshotUtils {
         }
     }
 
+    /**
+     * 生成网页截图
+     *
+     * @param webUrl 网页URL
+     * @return 压缩后的截图文件路径，失败返回null
+     */
+    public static String saveWebPageScreenshot(String webUrl) {
+        if (StrUtil.isBlank(webUrl)) {
+            log.error("网页URL不能为空");
+            return null;
+        }
+        try {
+            // 创建临时目录
+            String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
+                    + File.separator + UUID.randomUUID().toString().substring(0, 8);
+            FileUtil.mkdir(rootPath);
+            // 图片后缀
+            final String IMAGE_SUFFIX = ".png";
+            // 原始截图文件路径
+            String imageSavePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + IMAGE_SUFFIX;
+            // 访问网页
+            getDriver().get(webUrl);
+            // 等待页面加载完成
+            waitForPageLoad(getDriver());
+            // 截图
+            byte[] screenshotBytes = ((TakesScreenshot) getDriver()).getScreenshotAs(OutputType.BYTES);
+            // 保存原始图片
+            saveImage(screenshotBytes, imageSavePath);
+            log.info("原始截图保存成功: {}", imageSavePath);
+            // 压缩图片
+            final String COMPRESSION_SUFFIX = "_compressed.jpg";
+            String compressedImagePath = rootPath + File.separator + RandomUtil.randomNumbers(5) + COMPRESSION_SUFFIX;
+            compressImage(imageSavePath, compressedImagePath);
+            log.info("压缩图片保存成功: {}", compressedImagePath);
+            // 删除原始图片，只保留压缩图片
+            FileUtil.del(imageSavePath);
+            return compressedImagePath;
+        } catch (Exception e) {
+            log.error("网页截图失败: {}", webUrl, e);
+            return null;
+        }
+    }
+
 
 }
-
