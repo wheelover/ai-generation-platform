@@ -207,8 +207,8 @@ const fetchChatHistory = async () => {
       // 转换为前端消息格式
       messages.value = chatHistoryList.map((item: any) => ({
         id: item.id,
-        role: (item.role === 'ai' ? 'ai' : 'user') as 'ai' | 'user',
-        content: String(item.content || ''),
+        role: (item.messageType === 'ai' ? 'ai' : 'user') as 'ai' | 'user',
+        content: String(item.message || ''),
         timestamp: String(item.createTime || '')
       }))
       
@@ -258,8 +258,8 @@ const loadMoreHistory = async () => {
       // 转换为前端消息格式
       const moreMessages: Array<{ id?: number; role: 'user' | 'ai'; content: string; timestamp: string }> = chatHistoryList.map((item: any) => ({
         id: item.id,
-        role: (item.role === 'ai' ? 'ai' : 'user') as 'ai' | 'user',
-        content: String(item.content || ''),
+        role: (item.messageType === 'ai' ? 'ai' : 'user') as 'ai' | 'user',
+        content: String(item.message || ''),
         timestamp: String(item.createTime || '')
       }))
       

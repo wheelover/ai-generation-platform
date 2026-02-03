@@ -76,16 +76,16 @@ const columns = [
   },
   {
     title: '消息类型',
-    dataIndex: 'role',
-    key: 'role',
+    dataIndex: 'messageType',
+    key: 'messageType',
     render: (text: string) => {
       return text === 'ai' ? '<span style="color: #52c41a;">AI消息</span>' : '<span style="color: #1890ff;">用户消息</span>'
     }
   },
   {
     title: '消息内容',
-    dataIndex: 'content',
-    key: 'content',
+    dataIndex: 'message',
+    key: 'message',
     ellipsis: true,
     width: 400
   },
