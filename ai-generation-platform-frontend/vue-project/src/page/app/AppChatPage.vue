@@ -25,6 +25,7 @@
             />
           </template>
         </a-dropdown>
+        <a-button @click="downloadCode" :loading="downloading">下载代码</a-button>
         <a-button type="primary" @click="deployApp" :loading="deploying">部署</a-button>
       </div>
     </div>
@@ -108,7 +109,7 @@
 import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { getAppVoById, deployApp as deployAppApi, deleteApp } from '@/api/appController'
+import { getAppVoById, deployApp as deployAppApi, deleteApp, downloadAppCode } from '@/api/appController'
 import { getLatestChatHistory, getMoreChatHistory } from '@/api/chatHistoryController'
 import { useLoginUserStore } from '@/stores/loginUser'
 import AppDetailCard from '@/components/AppDetailCard.vue'
@@ -159,6 +160,8 @@ const inputForm = reactive({ content: '' })
 const loading = ref(false)
 // 部署状态
 const deploying = ref(false)
+// 下载状态
+const downloading = ref(false)
 // 网页预览URL
 const webPreviewUrl = ref('')
 // 部署成功卡片
@@ -549,6 +552,51 @@ const closeDeployCard = () => {
 const visitWebsite = () => {
   if (deployUrl.value) {
     window.open(deployUrl.value, '_blank')
+  }
+}
+
+// 下载代码
+const downloadCode = async () => {
+  downloading.value = true
+  try {
+    const url = `${import.meta.env.VITE_API_BASE_URL}/app/download/${appId}`
+    const response = await fetch(url, {
+      credentials: 'include'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Network response was not ok')
+    }
+    
+    // 获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition')
+    let fileName = `app_${appId}.zip`
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="([^"]+)"/)
+      if (match && match[1]) {
+        fileName = match[1]
+      }
+    }
+    
+    // 获取blob
+    const blob = await response.blob()
+    
+    // 创建下载链接
+    const urlObject = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = urlObject
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(urlObject)
+    
+    message.success('代码下载成功')
+  } catch (error) {
+    console.error('下载代码失败:', error)
+    message.error('下载代码失败')
+  } finally {
+    downloading.value = false
   }
 }
 
