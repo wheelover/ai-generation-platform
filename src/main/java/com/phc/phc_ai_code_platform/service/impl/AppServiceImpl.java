@@ -316,7 +316,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         // 8. 复制文件到部署目录
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
         try{
-            FileUtil.copy(sourceDir, new File(deployDirPath), true);
+            // Vue 项目：复制 dist 目录内容，而不是复制 dist 目录本身
+            if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT) {
+                FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+            } else {
+                FileUtil.copy(sourceDir, new File(deployDirPath), true);
+            }
+            log.info("Vue 项目部署成功，部署路径: {}", deployDirPath);
         } catch (Exception e) {
             log.error("复制文件到部署目录失败：{}", e.getMessage(), e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "复制文件到部署目录失败");
