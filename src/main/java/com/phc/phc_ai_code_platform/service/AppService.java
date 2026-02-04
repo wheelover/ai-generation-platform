@@ -2,6 +2,7 @@ package com.phc.phc_ai_code_platform.service;
 
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import com.phc.phc_ai_code_platform.model.dto.app.AppAddRequest;
 import com.phc.phc_ai_code_platform.model.dto.app.AppQueryRequest;
 import com.phc.phc_ai_code_platform.model.entity.App;
 import com.phc.phc_ai_code_platform.model.entity.User;
@@ -92,5 +93,20 @@ public interface AppService extends IService<App> {
      */
     String deployApp(Long appId, User loginUser);
 
+    /**
+     * 异步生成应用截图
+     *
+     * @param appId 应用ID
+     * @param appUrl 应用URL
+     */
     void generateAppScreenshotAsync(Long appId, String appUrl);
+
+    /**
+     * 创建应用
+     *
+     * @param appAddRequest 应用信息
+     * @param loginUser 登录用户
+     * @return 应用ID
+     */
+    Long createApp(AppAddRequest appAddRequest, User loginUser);
 }
