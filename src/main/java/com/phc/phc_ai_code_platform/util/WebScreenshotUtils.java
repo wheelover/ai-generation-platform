@@ -1,14 +1,9 @@
 package com.phc.phc_ai_code_platform.util;
 
-import cn.hutool.core.img.ImgUtil;
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.RandomUtil;
-import cn.hutool.core.util.StrUtil;
-import com.phc.phc_ai_code_platform.exception.BusinessException;
-import com.phc.phc_ai_code_platform.exception.ErrorCode;
-import io.github.bonigarcia.wdm.WebDriverManager;
-import jakarta.annotation.PreDestroy;
-import lombok.extern.slf4j.Slf4j;
+import java.io.File;
+import java.time.Duration;
+import java.util.UUID;
+
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
@@ -17,9 +12,15 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.io.File;
-import java.time.Duration;
-import java.util.UUID;
+import com.phc.phc_ai_code_platform.exception.BusinessException;
+import com.phc.phc_ai_code_platform.exception.ErrorCode;
+
+import cn.hutool.core.img.ImgUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
+import io.github.bonigarcia.wdm.WebDriverManager;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class WebScreenshotUtils {
@@ -54,11 +55,6 @@ public class WebScreenshotUtils {
                 driverThreadLocal.remove();
             }
         }
-    }
-
-    @PreDestroy
-    public void destroy() {
-        closeDriver();
     }
 
     /**
@@ -135,8 +131,8 @@ public class WebScreenshotUtils {
             // 创建等待页面加载对象
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             // 等待 document.readyState 为complete
-            wait.until(d ->
-                    ((JavascriptExecutor) d).executeScript("return document.readyState")
+            wait.until(d
+                    -> ((JavascriptExecutor) d).executeScript("return document.readyState")
                             .equals("complete")
             );
             // 额外等待一段时间，确保动态内容加载完成
@@ -187,8 +183,9 @@ public class WebScreenshotUtils {
         } catch (Exception e) {
             log.error("网页截图失败: {}", webUrl, e);
             return null;
+        } finally {
+            closeDriver();
         }
     }
-
 
 }
