@@ -2,7 +2,7 @@ package com.phc.phc_ai_code_platform.service.impl;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import com.phc.phc_ai_code_platform.ai.model.message.CosManager;
+import com.phc.phc_ai_code_platform.manager.CosManager;
 import com.phc.phc_ai_code_platform.exception.ErrorCode;
 import com.phc.phc_ai_code_platform.exception.ThrowUtils;
 import com.phc.phc_ai_code_platform.service.ScreenshotService;

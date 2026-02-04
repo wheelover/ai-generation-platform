@@ -1,4 +1,4 @@
-package com.phc.phc_ai_code_platform.ai.model.message;
+package com.phc.phc_ai_code_platform.manager;
 
 import com.phc.phc_ai_code_platform.config.CosClientConfig;
 import com.qcloud.cos.COSClient;
