@@ -228,28 +228,19 @@ onMounted(() => {
   width: 100%;
   margin: 0;
   padding: 0;
-}
-
-.hero-section {
-  text-align: center;
-  padding: 100px 40px;
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #16213e 100%);
-  border-radius: 0;
-  margin-bottom: 0;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   position: relative;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #16213e 100%);
   overflow: hidden;
-  width: 100%;
 }
 
-.hero-section::before {
+#homePage::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(circle at 20% 50%, rgba(66, 153, 225, 0.2) 0%, transparent 50%),
     radial-gradient(circle at 80% 50%, rgba(138, 43, 226, 0.2) 0%, transparent 50%),
     linear-gradient(90deg, transparent 50%, rgba(66, 153, 225, 0.03) 50%),
@@ -257,6 +248,7 @@ onMounted(() => {
   background-size: 100% 100%, 100% 100%, 60px 60px, 60px 60px;
   z-index: 0;
   animation: gridMove 20s linear infinite;
+  pointer-events: none;
 }
 
 @keyframes gridMove {
@@ -268,9 +260,19 @@ onMounted(() => {
   }
 }
 
-.hero-section > * {
+#homePage > * {
   position: relative;
   z-index: 1;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 100px 40px;
+  border-radius: 0;
+  margin-bottom: 0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  width: 100%;
 }
 
 .site-title {

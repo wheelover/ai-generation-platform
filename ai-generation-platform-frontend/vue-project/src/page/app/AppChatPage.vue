@@ -3,15 +3,18 @@
     <!-- 顶部栏 -->
     <div class="app-header">
       <div class="app-header-left">
-        <a-dropdown>
-          <a-button>{{ appInfo.appName || '应用名称' }}</a-button>
-          <template #overlay>
-            <a-menu>
-              <a-menu-item @click="goToUpdate">编辑应用信息</a-menu-item>
-              <a-menu-item @click="deleteCurrentApp">删除应用</a-menu-item>
-            </a-menu>
-          </template>
-        </a-dropdown>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <a-dropdown>
+            <a-button>{{ appInfo.appName || '应用名称' }}</a-button>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item @click="goToUpdate">编辑应用信息</a-menu-item>
+                <a-menu-item @click="deleteCurrentApp">删除应用</a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+          <a-tag v-if="appInfo.codeGenType" color="blue" style="font-size: 12px;">{{ appInfo.codeGenType.toUpperCase() }}</a-tag>
+        </div>
       </div>
       <div class="app-header-right">
         <a-dropdown placement="bottomRight" trigger="click">

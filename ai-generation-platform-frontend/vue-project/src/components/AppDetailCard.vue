@@ -10,6 +10,10 @@
         <span class="info-label">创建时间：</span>
         <span class="info-value">{{ appInfo.createTime ? formatDate(appInfo.createTime) : '未知时间' }}</span>
       </div>
+      <div class="app-info-item">
+        <span class="info-label">生成类型：</span>
+        <span class="info-value">{{ appInfo.codeGenType || '未知类型' }}</span>
+      </div>
     </div>
     <div v-if="isOwner" class="app-detail-section">
       <h4>操作</h4>
@@ -28,6 +32,7 @@ interface AppInfo {
     userAvatar?: string
   }
   createTime?: string | Date
+  codeGenType?: string
 }
 
 const props = defineProps<{
