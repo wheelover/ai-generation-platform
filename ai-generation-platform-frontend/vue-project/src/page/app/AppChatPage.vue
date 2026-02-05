@@ -65,6 +65,16 @@
         <!-- 用户消息输入框 -->
         <div class="input-area">
           <a-form layout="vertical" :model="inputForm" @finish="sendMessage">
+            <!-- 选中元素信息 -->
+            <a-alert
+              v-if="selectedElement"
+              :message="formatElementInfo(selectedElement)"
+              type="info"
+              show-icon
+              closable
+              @close="clearSelectedElement"
+              style="margin-bottom: 12px"
+            />
             <a-form-item>
               <a-input
                 v-model:value="inputForm.content"
@@ -76,6 +86,9 @@
               />
             </a-form-item>
             <div class="input-actions">
+              <a-button @click="toggleEditMode" :disabled="!isOwner" :loading="isEditing" :type="isEditing ? 'primary' : 'default'">
+                {{ isEditing ? '退出编辑' : '编辑模式' }}
+              </a-button>
               <a-button type="primary" html-type="submit" :disabled="!isOwner" icon="rocket">生成网站</a-button>
             </div>
           </a-form>
@@ -90,6 +103,7 @@
         </div>
         <iframe
           v-else
+          ref="previewIframe"
           :src="webPreviewUrl"
           frameborder="0"
           class="web-preview-iframe"
@@ -119,6 +133,15 @@ import AppDetailCard from '@/components/AppDetailCard.vue'
 import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
 import MessageItem from '@/components/MessageItem.vue'
 import { getStaticPreviewUrl } from '@/utils/staticResource'
+import {
+  enterEditMode,
+  exitEditMode,
+  clearSelection,
+  handleMessageFromIframe,
+  MessageType,
+  formatElementInfo
+} from '@/utils/visualEditor'
+import type { SelectedElement } from '@/utils/visualEditor'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -173,6 +196,12 @@ const deploySuccess = ref(false)
 const deployUrl = ref('')
 // 消息区域引用
 const messageArea = ref<HTMLElement>()
+// iframe引用，用于通信
+const previewIframe = ref<HTMLIFrameElement>()
+// 编辑模式状态
+const isEditing = ref(false)
+// 选中元素信息
+const selectedElement = ref<SelectedElement | null>(null)
 
 // 游标查询相关状态
 const hasMore = ref(false)
@@ -384,8 +413,14 @@ const sendInitialPrompt = async () => {
 
 // 发送消息
 const sendMessage = async () => {
-  const content = inputForm.content.trim()
+  let content = inputForm.content.trim()
   if (!content) return
+  
+  // 添加选中元素信息到提示词
+  if (selectedElement.value) {
+    const elementInfo = formatElementInfo(selectedElement.value)
+    content = `${elementInfo} ${content}`
+  }
   
   // 添加用户消息
   messages.value.push({
@@ -396,6 +431,12 @@ const sendMessage = async () => {
   
   // 清空输入框
   inputForm.content = ''
+  
+  // 清除选中元素并退出编辑模式
+  clearSelectedElement()
+  if (isEditing.value) {
+    toggleEditMode()
+  }
   
   // 滚动到底部
   scrollToBottom()
@@ -603,6 +644,46 @@ const downloadCode = async () => {
   }
 }
 
+// 切换编辑模式
+const toggleEditMode = () => {
+  if (isEditing.value) {
+    // 退出编辑模式
+    exitEditMode(previewIframe.value || null)
+    clearSelectedElement()
+  } else {
+    // 进入编辑模式
+    enterEditMode(previewIframe.value || null)
+  }
+  isEditing.value = !isEditing.value
+}
+
+// 清除选中元素
+const clearSelectedElement = () => {
+  selectedElement.value = null
+  clearSelection(previewIframe.value || null)
+}
+
+// 处理来自iframe的消息
+const handleIframeMessage = (message: any) => {
+  switch (message.type) {
+    case MessageType.ELEMENT_SELECTED:
+      selectedElement.value = message.data
+      break
+    case MessageType.ELEMENT_HOVERED:
+      // 处理元素悬停事件（如果需要）
+      break
+    default:
+      break
+  }
+}
+
+// 设置iframe消息监听器
+const setupIframeMessageListener = () => {
+  window.addEventListener('message', (event) => {
+    handleMessageFromIframe(event, handleIframeMessage)
+  })
+}
+
 
 
 // 监听消息变化，自动滚动到底部
@@ -613,6 +694,7 @@ watch(messages, () => {
 // 页面加载时获取应用信息
 onMounted(() => {
   fetchAppInfo()
+  setupIframeMessageListener()
 })
 </script>
 
