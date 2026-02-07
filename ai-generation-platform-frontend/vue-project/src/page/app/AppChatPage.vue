@@ -574,7 +574,8 @@ const updatePreview = () => {
     const codeGenType = appInfo.value?.codeGenType || CodeGenTypeEnum.HTML
     const newPreviewUrl = getStaticPreviewUrl(codeGenType, appId.value)
     previewUrl.value = newPreviewUrl
-    previewReady.value = true
+    // 重置 previewReady 为 false，等待 iframe 加载完成
+    previewReady.value = false
   }
 }
 
@@ -706,12 +707,17 @@ const toggleEditMode = () => {
   // 检查 iframe 是否已经加载
   const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
   if (!iframe) {
-    message.warning('请等待页面加载完成')
+    message.warning('请等待页面加载完成iframe')
     return
   }
   // 确保 visualEditor 已初始化
   if (!previewReady.value) {
-    message.warning('请等待页面加载完成')
+    message.warning('请等待页面加载完成visualEditor')
+    return
+  }
+  // 确保 iframe 的 contentDocument 已经存在
+  if (!iframe.contentDocument) {
+    message.warning('请等待页面加载完成contentDocument')
     return
   }
   // 确保 visualEditor.iframe 已设置

@@ -144,34 +144,53 @@ export class VisualEditor {
    * 注入编辑脚本到 iframe
    */
   private injectEditScript() {
-    if (!this.iframe) return
+    console.log('Injecting edit script...');
+    if (!this.iframe) {
+      console.error('No iframe available for script injection');
+      return;
+    }
 
     const waitForIframeLoad = () => {
       try {
+        console.log('Waiting for iframe to load...');
+        console.log('Iframe contentWindow:', this.iframe!.contentWindow);
+        console.log('Iframe contentDocument:', this.iframe!.contentDocument);
+        
         if (this.iframe!.contentWindow && this.iframe!.contentDocument) {
+          console.log('Iframe is loaded, proceeding with script injection');
+          
           // 检查是否已经注入过脚本
           if (this.iframe!.contentDocument.getElementById('visual-edit-script')) {
+            console.log('Script already injected, sending toggle edit mode message');
             this.sendMessageToIframe({
               type: 'TOGGLE_EDIT_MODE',
               editMode: true,
-            })
-            return
+            });
+            return;
           }
 
-          const script = this.generateEditScript()
-          const scriptElement = this.iframe!.contentDocument.createElement('script')
-          scriptElement.id = 'visual-edit-script'
-          scriptElement.textContent = script
-          this.iframe!.contentDocument.head.appendChild(scriptElement)
+          console.log('Injecting new script...');
+          const script = this.generateEditScript();
+          const scriptElement = this.iframe!.contentDocument.createElement('script');
+          scriptElement.id = 'visual-edit-script';
+          scriptElement.textContent = script;
+          
+          try {
+            this.iframe!.contentDocument.head.appendChild(scriptElement);
+            console.log('Script injected successfully');
+          } catch (error) {
+            console.error('Error appending script element:', error);
+          }
         } else {
-          setTimeout(waitForIframeLoad, 100)
+          console.log('Iframe not ready, waiting 100ms...');
+          setTimeout(waitForIframeLoad, 100);
         }
-      } catch {
-        // 静默处理注入失败
+      } catch (error) {
+        console.error('Error during script injection:', error);
       }
     }
 
-    waitForIframeLoad()
+    waitForIframeLoad();
   }
 
   /**
@@ -180,11 +199,13 @@ export class VisualEditor {
   private generateEditScript() {
     return `
       (function() {
+        console.log('Visual editor script loaded');
         let isEditMode = true;
         let currentHoverElement = null;
         let currentSelectedElement = null;
 
         function injectStyles() {
+          console.log('Injecting styles...');
           if (document.getElementById('edit-mode-styles')) return;
           const style = document.createElement('style');
           style.id = 'edit-mode-styles';
@@ -226,6 +247,7 @@ export class VisualEditor {
             }
           \`;
           document.head.appendChild(style);
+          console.log('Styles injected successfully');
         }
 
         // 生成元素选择器
@@ -299,9 +321,11 @@ export class VisualEditor {
 
         function addEventListeners() {
           if (eventListenersAdded) return;
+          console.log('Adding event listeners...');
 
-          const mouseoverHandler = (event) => {
+          const mouseoverHandler = function(event) {
             if (!isEditMode) return;
+            console.log('Mouse over element:', event.target);
 
             const target = event.target;
             if (target === currentHoverElement || target === currentSelectedElement) return;
@@ -313,7 +337,7 @@ export class VisualEditor {
             currentHoverElement = target;
           };
 
-          const mouseoutHandler = (event) => {
+          const mouseoutHandler = function(event) {
             if (!isEditMode) return;
 
             const target = event.target;
@@ -322,8 +346,9 @@ export class VisualEditor {
             }
           };
 
-          const clickHandler = (event) => {
+          const clickHandler = function(event) {
             if (!isEditMode) return;
+            console.log('Element clicked:', event.target);
 
             event.preventDefault();
             event.stopPropagation();
@@ -344,8 +369,9 @@ export class VisualEditor {
                 type: 'ELEMENT_SELECTED',
                 data: { elementInfo }
               }, '*');
-            } catch {
-              // 静默处理发送失败
+              console.log('Element info sent:', elementInfo);
+            } catch (error) {
+              console.error('Error sending element info:', error);
             }
           };
 
@@ -353,72 +379,83 @@ export class VisualEditor {
           document.addEventListener('mouseout', mouseoutHandler, true);
           document.addEventListener('click', clickHandler, true);
           eventListenersAdded = true;
+          console.log('Event listeners added successfully');
         }
 
-         function setupEventListeners() {
-           addEventListeners();
-         }
+        function setupEventListeners() {
+          addEventListeners();
+        }
 
         // 监听父窗口消息
-        window.addEventListener('message', (event) => {
-           const { type, editMode } = event.data;
-           switch (type) {
-             case 'TOGGLE_EDIT_MODE':
-               isEditMode = editMode;
-               if (isEditMode) {
-                 injectStyles();
-                 setupEventListeners();
-                 showEditTip();
-               } else {
-                 clearHoverEffect();
-                 clearSelectedEffect();
-               }
-               break;
-             case 'CLEAR_SELECTION':
-               clearSelectedEffect();
-               break;
-             case 'CLEAR_ALL_EFFECTS':
-               isEditMode = false;
-               clearHoverEffect();
-               clearSelectedEffect();
-               const tip = document.getElementById('edit-tip');
-               if (tip) tip.remove();
-               break;
-           }
-         });
+        window.addEventListener('message', function(event) {
+          try {
+            console.log('Message received from parent:', event.data);
+            const { type, editMode } = event.data;
+            switch (type) {
+              case 'TOGGLE_EDIT_MODE':
+                isEditMode = editMode;
+                console.log('Edit mode toggled to:', isEditMode);
+                if (isEditMode) {
+                  injectStyles();
+                  setupEventListeners();
+                  showEditTip();
+                } else {
+                  clearHoverEffect();
+                  clearSelectedEffect();
+                }
+                break;
+              case 'CLEAR_SELECTION':
+                clearSelectedEffect();
+                break;
+              case 'CLEAR_ALL_EFFECTS':
+                isEditMode = false;
+                clearHoverEffect();
+                clearSelectedEffect();
+                const tip = document.getElementById('edit-tip');
+                if (tip) tip.remove();
+                break;
+            }
+          } catch (error) {
+            console.error('Error handling message:', error);
+          }
+        });
 
-         function showEditTip() {
-           if (document.getElementById('edit-tip')) return;
-           const tip = document.createElement('div');
-           tip.id = 'edit-tip';
-           tip.innerHTML = '🎯 编辑模式已开启<br/>悬浮查看元素，点击选中元素';
-           tip.style.cssText = \`
-             position: fixed;
-             top: 20px;
-             right: 20px;
-             background: #1890ff;
-             color: white;
-             padding: 12px 16px;
-             border-radius: 6px;
-             font-size: 14px;
-             z-index: 9999;
-             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-             animation: fadeIn 0.3s ease;
-           \`;
-           const style = document.createElement('style');
-           style.textContent = '@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }';
-           document.head.appendChild(style);
-           document.body.appendChild(tip);
-           setTimeout(() => {
-             if (tip.parentNode) {
-               tip.style.animation = 'fadeIn 0.3s ease reverse';
-               setTimeout(() => tip.remove(), 300);
-             }
-           }, 3000);
-         }
-         injectStyles();
-         setupEventListeners();
-         showEditTip();
+        function showEditTip() {
+          if (document.getElementById('edit-tip')) return;
+          const tip = document.createElement('div');
+          tip.id = 'edit-tip';
+          tip.innerHTML = '🎯 编辑模式已开启<br/>悬浮查看元素，点击选中元素';
+          tip.style.cssText = \`
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1890ff;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: fadeIn 0.3s ease;
+          \`;
+          const style = document.createElement('style');
+          style.textContent = '@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }';
+          document.head.appendChild(style);
+          document.body.appendChild(tip);
+          setTimeout(() => {
+            if (tip.parentNode) {
+              tip.style.animation = 'fadeIn 0.3s ease reverse';
+              setTimeout(() => tip.remove(), 300);
+            }
+          }, 3000);
+        }
+        
+        // 初始化
+        console.log('Initializing visual editor...');
+        injectStyles();
+        setupEventListeners();
+        showEditTip();
+        console.log('Visual editor initialized successfully');
       })();
     `
   }

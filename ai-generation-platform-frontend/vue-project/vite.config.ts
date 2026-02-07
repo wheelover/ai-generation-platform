@@ -16,4 +16,13 @@ export default defineConfig({
       '@/request': fileURLToPath(new URL('./src/utils/request.ts', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8123',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
