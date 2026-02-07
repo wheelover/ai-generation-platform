@@ -1,12 +1,11 @@
 <template>
   <a-modal
-    :open="visible"
+    v-model:open="localVisible"
     title="部署成功"
     :footer="null"
     :width="400"
     :closable="true"
-    @cancel="$emit('close')"
-    @update:open="(value: boolean) => { if (!value) $emit('close') }"
+    @cancel="handleClose"
   >
     <div class="deploy-success-content">
       <div class="success-icon">✓</div>
@@ -18,24 +17,40 @@
       </div>
       <div class="deploy-actions">
         <a-button type="primary" @click="visitWebsite">访问网站</a-button>
-        <a-button @click="$emit('close')">关闭</a-button>
+        <a-button @click="handleClose">关闭</a-button>
       </div>
     </div>
   </a-modal>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { message } from 'ant-design-vue'
 
 const props = defineProps<{
-  visible: boolean
+  visible?: boolean
+  open?: boolean
   deployUrl: string
 }>()
 
 const emit = defineEmits<{
+  (e: 'update:visible', value: boolean): void
+  (e: 'update:open', value: boolean): void
   (e: 'close'): void
   (e: 'visit'): void
 }>()
+
+// 兼容 v-model:open 和 :visible 两种用法
+const localVisible = computed({
+  get: () => props.open ?? props.visible ?? false,
+  set: (value) => {
+    if (props.open !== undefined) {
+      emit('update:open', value)
+    } else {
+      emit('update:visible', value)
+    }
+  }
+})
 
 const copyDeployUrl = () => {
   if (props.deployUrl) {
@@ -54,6 +69,11 @@ const visitWebsite = () => {
     window.open(props.deployUrl, '_blank')
     emit('visit')
   }
+}
+
+const handleClose = () => {
+  localVisible.value = false
+  emit('close')
 }
 </script>
 

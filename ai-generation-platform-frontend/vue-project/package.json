@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.2",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.16.5",
     "@umijs/openapi": "^1.14.1",
     "@vitejs/plugin-vue": "^6.0.1",

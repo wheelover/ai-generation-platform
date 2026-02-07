@@ -347,7 +347,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT) {
                 FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
             } else {
-                FileUtil.copy(sourceDir, new File(deployDirPath), true);
+                FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
             }
             log.info("Vue 项目部署成功，部署路径: {}", deployDirPath);
         } catch (Exception e) {
