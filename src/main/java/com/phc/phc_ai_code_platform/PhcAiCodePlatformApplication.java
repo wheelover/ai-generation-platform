@@ -8,7 +8,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 @EnableAspectJAutoProxy(exposeProxy = true)
 @MapperScan("com.phc.phc_ai_code_platform.mapper")
-@SpringBootApplication(exclude = {RedisEmbeddingStoreAutoConfiguration.class})
+@SpringBootApplication(exclude = {RedisEmbeddingStoreAutoConfiguration.class}, scanBasePackages = {"com.phc.phc_ai_code_platform", "langgraph4j"})
 public class PhcAiCodePlatformApplication {
 
 	public static void main(String[] args) {

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b \"e:\\\\JAVA\\\\ai-generation-platform\\\\src\\\\main\\\\resources\\\\static\")"
+    ]
+  }
+}
