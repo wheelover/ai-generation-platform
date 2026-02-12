@@ -1,6 +1,7 @@
 package langgraph4j.state;
 
 import com.phc.phc_ai_code_platform.ai.model.CodeGenTypeEnum;
+import langgraph4j.model.QualityResult;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -71,6 +72,12 @@ public class WorkflowContext implements Serializable {
      * 错误信息
      */
     private String errorMessage;
+
+    /**
+     * 质量检查结果
+     */
+    private QualityResult qualityResult;
+
 
     @Serial
     private static final long serialVersionUID = 1L;

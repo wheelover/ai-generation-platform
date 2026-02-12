@@ -1,4 +1,4 @@
-package com.phc.phc_ai_code_platform.ai;
+package langgraph4j.ai;
 
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;

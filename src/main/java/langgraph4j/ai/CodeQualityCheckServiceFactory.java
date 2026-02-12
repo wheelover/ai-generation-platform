@@ -1,4 +1,4 @@
-package com.phc.phc_ai_code_platform.ai;
+package langgraph4j.ai;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;

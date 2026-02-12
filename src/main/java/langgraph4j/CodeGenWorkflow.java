@@ -2,12 +2,16 @@ package langgraph4j;
 
 import java.util.Map;
 
+import com.phc.phc_ai_code_platform.ai.model.CodeGenTypeEnum;
+import langgraph4j.model.QualityResult;
+import langgraph4j.node.*;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.bsc.langgraph4j.GraphRepresentation;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.NodeOutput;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.StateGraph.START;
+import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
 
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
@@ -15,11 +19,6 @@ import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
 import com.phc.phc_ai_code_platform.exception.BusinessException;
 import com.phc.phc_ai_code_platform.exception.ErrorCode;
 
-import langgraph4j.node.CodeGeneratorNode;
-import langgraph4j.node.ImageCollectorNode;
-import langgraph4j.node.ProjectBuilderNode;
-import langgraph4j.node.PromptEnhancerNode;
-import langgraph4j.node.RouterNode;
 import langgraph4j.state.WorkflowContext;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,12 +38,21 @@ public class CodeGenWorkflow {
                     .addNode("router", RouterNode.create())
                     .addNode("code_generator", CodeGeneratorNode.create())
                     .addNode("project_builder", ProjectBuilderNode.create())
+                    .addNode("code_quality_check", CodeQualityCheckNode.create())
                     // 添加边
                     .addEdge(START, "image_collector")
                     .addEdge("image_collector", "prompt_enhancer")
                     .addEdge("prompt_enhancer", "router")
                     .addEdge("router", "code_generator")
-                    .addEdge("code_generator", "project_builder")
+                    .addEdge("code_generator", "code_quality_check")
+                    // 新增质检条件边：根据质检结果决定下一步
+                    .addConditionalEdges("code_quality_check",
+                            edge_async(this::routeAfterQualityCheck),
+                            Map.of(
+                                    "build", "project_builder",   // 质检通过且需要构建
+                                    "skip_build", END,            // 质检通过但跳过构建
+                                    "fail", "code_generator"      // 质检失败，重新生成
+                            ))
                     .addEdge("project_builder", END)
                     // 编译工作流
                     .compile();
@@ -85,4 +93,30 @@ public class CodeGenWorkflow {
         log.info("代码生成工作流执行完成！");
         return finalContext;
     }
+
+    private String routeBuildOrSkip(MessagesState<String> state) {
+        WorkflowContext context = WorkflowContext.getContext(state);
+        CodeGenTypeEnum generationType = context.getGenerationType();
+        // HTML 和 MULTI_FILE 类型不需要构建，直接结束
+        if (generationType == CodeGenTypeEnum.HTML || generationType == CodeGenTypeEnum.MULTI_FILE) {
+            return "skip_build";
+        }
+        // VUE_PROJECT 需要构建
+        return "build";
+    }
+
+    private String routeAfterQualityCheck(MessagesState<String> state) {
+        WorkflowContext context = WorkflowContext.getContext(state);
+        QualityResult qualityResult = context.getQualityResult();
+        // 如果质检失败，重新生成代码
+        if (qualityResult == null || !qualityResult.getIsValid()) {
+            log.error("代码质检失败，需要重新生成代码");
+            return "fail";
+        }
+        // 质检通过，使用原有的构建路由逻辑
+        log.info("代码质检通过，继续后续流程");
+        return routeBuildOrSkip(state);
+    }
+
+
 }
