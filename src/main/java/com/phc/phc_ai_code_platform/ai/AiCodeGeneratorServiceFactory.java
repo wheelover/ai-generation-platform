@@ -3,6 +3,7 @@ package com.phc.phc_ai_code_platform.ai;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.phc.phc_ai_code_platform.ai.guardrail.PromptSafetyInputGuardrail;
+import com.phc.phc_ai_code_platform.ai.guardrail.RetryOutputGuardrail;
 import com.phc.phc_ai_code_platform.ai.model.CodeGenTypeEnum;
 import com.phc.phc_ai_code_platform.ai.tool.*;
 import com.phc.phc_ai_code_platform.config.RedisChatMemoryStoreConfig; // 修改导入
@@ -105,6 +106,7 @@ public class AiCodeGeneratorServiceFactory {
                 // 使用多例模式的 StreamingChatModel 解决并发问题
                 StreamingChatModel reasoningStreamingChatModel = SpringContextUtil.getBean("reasoningStreamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
+                        .maxSequentialToolsInvocations(20)
                         .streamingChatModel(reasoningStreamingChatModel)
                         .chatMemoryProvider(memoryId -> chatMemory)
                         .tools(toolManager.getAllTools())
@@ -112,16 +114,19 @@ public class AiCodeGeneratorServiceFactory {
                                 toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                         ))
                         .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .outputGuardrails(new RetryOutputGuardrail())
                         .build();
             }
             case HTML, MULTI_FILE -> {
                 // 使用多例模式的 StreamingChatModel 解决并发问题
                 StreamingChatModel openAiStreamingChatModel = SpringContextUtil.getBean("streamingChatModelPrototype", StreamingChatModel.class);
                 yield AiServices.builder(AiCodeGeneratorService.class)
+                        .maxSequentialToolsInvocations(20)
                         .chatModel(chatModel)
                         .streamingChatModel(openAiStreamingChatModel)
                         .chatMemory(chatMemory)
                         .inputGuardrails(new PromptSafetyInputGuardrail())
+                        .outputGuardrails(new RetryOutputGuardrail())
                         .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
