@@ -2,6 +2,7 @@ package com.phc.phc_ai_code_platform.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.phc.phc_ai_code_platform.ai.guardrail.PromptSafetyInputGuardrail;
 import com.phc.phc_ai_code_platform.ai.model.CodeGenTypeEnum;
 import com.phc.phc_ai_code_platform.ai.tool.*;
 import com.phc.phc_ai_code_platform.config.RedisChatMemoryStoreConfig; // 修改导入
@@ -110,6 +111,7 @@ public class AiCodeGeneratorServiceFactory {
                         .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                                 toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                         ))
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
                         .build();
             }
             case HTML, MULTI_FILE -> {
@@ -119,6 +121,7 @@ public class AiCodeGeneratorServiceFactory {
                         .chatModel(chatModel)
                         .streamingChatModel(openAiStreamingChatModel)
                         .chatMemory(chatMemory)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
                         .build();
             }
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR,
